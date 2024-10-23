@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -11,6 +11,10 @@ import base64
 import numpy as np
 from pathlib import Path
 import uvicorn
+from peewee import *
+from gui.database import GPTSovitsDatabase, RefAudio
+from gui.util import (get_available_filename, sanitize_filename,
+    base64_to_audio_file)
 
 # sys path
 now_dir = os.getcwd()
@@ -62,12 +66,9 @@ def init_pipeline():
 
 app = FastAPI()
 tts_config, tts_pipeline = init_pipeline()
-
-class SetModelsInfo(BaseModel):
-    gpt_path: Optional[str] = None
-    sovits_path: Optional[str] = None
-    cnhubert_base_path: Optional[str] = None
-    bert_path: Optional[str] = None
+database = GPTSovitsDatabase()
+LOCAL_REF_SOUNDS_FOLDER = 'ref_sounds/'
+os.makedirs(LOCAL_REF_SOUNDS_FOLDER, exist_ok=True)
     
 from gui import model_utils
 @app.post("/find_models")
@@ -75,6 +76,81 @@ def find_models():
     return model_utils.find_models(
         Path(now_dir),
         Path(now_dir) / "models",)
+
+
+class UploadRefAudioInfo(BaseModel):
+    audio_hash: str
+    base64_audio_data: Optional[str] = None
+    preferred_name: Optional[str] = None
+    utterance: Optional[str] = None
+
+    local_filepath: Optional[str] = None
+    # The client should only transmit local_filepath if it detects that it and
+    # the server are on the same machine (i.e. communicating via localhost or 
+    # 127.0.0.1)
+
+# method for uploading and updating reference audio
+@app.post("/post_ref_audio")
+def post_ref_audio(info : UploadRefAudioInfo, response: Response):
+
+    preferred_name = info.audio_hash+'.ogg'
+    if info.preferred_name is not None:
+        preferred_name = info.preferred_name
+        preferred_name = os.path.splitext(info.preferred_name)[0]
+        if not preferred_name.endswith('.ogg'):
+            preferred_name = preferred_name + '.ogg'
+
+    if info.base64_audio_data is None and not info.local_filepath:
+        # If base64_audio_data is null and this is not a local file, 
+        # then we are updating, and the ref audio must already exist on disk.
+        ref_audio : Optional[RefAudio] = database.get_ref_audio(info.audio_hash)
+        if ref_audio is None or not Path(ref_audio.local_filepath):
+            raise HTTPException(status_code=404,
+                detail=f"Attempted to update ref audio not found on disk: "
+                    f"{ref_audio.local_filepath} ({ref_audio.audio_hash})")
+        
+        ref_audio.utterance = info.utterance
+        ref_audio.save()
+        response.status_code = 200
+        return
+
+    if not info.local_filepath:
+        # Then we need to interpret base64_audio_data and save to disk
+        preferred_name = sanitize_filename(preferred_name)
+        local_filepath = Path(LOCAL_REF_SOUNDS_FOLDER) / preferred_name
+        local_filepath = get_available_filename(str(local_filepath))
+        
+        base64_to_audio_file(
+            info.base64_audio_data,
+            local_filepath)
+    else:
+        if not Path(info.local_filepath).exists():
+            raise HTTPException(status_code=404,
+                detail=f"Specified local filepath {ref_audio.local_filepath} "
+                    f"not found by server")
+
+    database.update_with_ref_audio(
+        audio_hash=info.audio_hash,
+        local_filepath=local_filepath,
+        utterance=info.utterance)
+    response.status_code = 201
+    return
+    
+
+@app.get("/list_ref_audio")
+def list_ref_audio():
+    v: RefAudio
+    return {v.audio_hash: {
+        'filepath': v.local_filepath,
+        'utterance': v.utterance
+    } for v in database.list_ref_audio()}
+
+
+class SetModelsInfo(BaseModel):
+    gpt_path: Optional[str] = None
+    sovits_path: Optional[str] = None
+    cnhubert_base_path: Optional[str] = None
+    bert_path: Optional[str] = None
 
 @app.post("/set_models")
 def set_models(info: SetModelsInfo):
@@ -90,11 +166,12 @@ def set_models(info: SetModelsInfo):
     tts_pipeline.init_t2s_weights(os.environ['gpt_path'])
     tts_pipeline.init_vits_weights(os.environ['sovits_path'])
 
+
 class GenerateInfo(BaseModel):
     text: str = ""
     text_lang: str = "en"
-    ref_audio_path: Optional[str] = None
-    aux_ref_audio_paths: Optional[list] = None
+    ref_audio_hash: Optional[str] = None
+    aux_ref_audio_hashes: Optional[list] = None
     prompt_text: Optional[str] = None
     prompt_lang: str = "en"
     top_k: int = 5
@@ -125,14 +202,16 @@ async def generate_wrapper(info: GenerateInfo):
         # "item" seems to be (sr, audio) : (int, np.ndarray), but we don't know what the dimension is
         # np.concatenate(audio, 0) implies that the result is 1-dimensionaly
         # What are these chunks anyways?
-        
-@app.head("/test")
-def test_conn():
-    pass
 
 @app.post("/generate")
 async def tts_generate(info: GenerateInfo):
     return StreamingResponse(generate_wrapper(info=info))
+
+
+@app.head("/test")
+def test_conn():
+    pass
+
 
 @app.post("/stop")
 def tts_stop():
