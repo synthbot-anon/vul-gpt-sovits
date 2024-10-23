@@ -145,13 +145,16 @@ class RefAudiosFrame(QGroupBox):
         self.table.setRowCount(len(ras))
         for i,ra in enumerate(ras):
             ra : RefAudio
+            filepath_item = QTableWidgetItem(ra.local_filepath)
+            filepath_item.setFlags(filepath_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(
-                i, 0, QTableWidgetItem(ra.local_filepath))
+                i, 0, filepath_item)
             self.table.setItem(
                 i, 1, QTableWidgetItem(ra.character))
             self.table.setItem(
                 i, 2, QTableWidgetItem(ra.utterance))
             hash_item = QTableWidgetItem(ra.audio_hash[:7])
+            hash_item.setFlags(hash_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(
                 i, 3, hash_item)
             check_box = QCheckBox()
@@ -172,6 +175,8 @@ class RefAudiosFrame(QGroupBox):
         
     # TODO: Manipulation buttons:
     # Add from file (drag and drop)
-    # Delete
+    # Delete (should we actually delete or just set a 'delete' flag?)
     # You should be able to edit the character and text inplace
+    # But not the file path or hash
+    # TODO: Search buttons
     # You should also get a search/filter for utterance/character
