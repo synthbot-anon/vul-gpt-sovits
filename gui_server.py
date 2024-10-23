@@ -10,6 +10,7 @@ import random
 import base64
 import numpy as np
 from pathlib import Path
+import uvicorn
 
 # sys path
 now_dir = os.getcwd()
@@ -124,6 +125,10 @@ async def generate_wrapper(info: GenerateInfo):
         # "item" seems to be (sr, audio) : (int, np.ndarray), but we don't know what the dimension is
         # np.concatenate(audio, 0) implies that the result is 1-dimensionaly
         # What are these chunks anyways?
+        
+@app.head("/test")
+def test_conn():
+    pass
 
 @app.post("/generate")
 async def tts_generate(info: GenerateInfo):
@@ -132,3 +137,18 @@ async def tts_generate(info: GenerateInfo):
 @app.post("/stop")
 def tts_stop():
     tts_pipeline.stop()
+    
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--ngrok',
+        action='store_true')
+    
+    args = parser.parse_args()
+
+    port = 17157
+    if args.ngrok:
+        from pyngrok import ngrok
+        public_url = ngrok.connect(port)
+        print(f"ngrok tunnel opened at {public_url}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
