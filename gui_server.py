@@ -86,7 +86,8 @@ def set_models(info: SetModelsInfo):
         os.environ['cnhubert_base_path'] = info.cnhubert_base_path
     if (info.bert_path is not None):
         os.environ['bert_path'] = info.bert_path
-        tts_pipeline.init_vits_weights(os.environ['sovits_path'])
+    tts_pipeline.init_t2s_weights(os.environ['gpt_path'])
+    tts_pipeline.init_vits_weights(os.environ['sovits_path'])
 
 class GenerateInfo(BaseModel):
     text: str = ""
@@ -123,9 +124,6 @@ async def generate_wrapper(info: GenerateInfo):
         # "item" seems to be (sr, audio) : (int, np.ndarray), but we don't know what the dimension is
         # np.concatenate(audio, 0) implies that the result is 1-dimensionaly
         # What are these chunks anyways?
-
-# Going to diverge from their code here.
-#@app.get("/find_models")
 
 @app.post("/generate")
 async def tts_generate(info: GenerateInfo):
