@@ -1,5 +1,9 @@
 import os
 
+AUDIO_EXTENSIONS = {
+    ".mp3", ".wav", ".flac", ".ogg"
+}
+
 def get_available_filename(filename):
     """
     Finds the first available filename by appending an incrementing digit.
@@ -76,3 +80,19 @@ def base64_to_audio_file(base64_string: str, output_file: str, codec: str = 'lib
 
     # Flush and close the output stream
     output_container.close()
+    
+    
+def ppp_parse(fname):
+    ret = {}
+    split = os.path.basename(fname).split('_')
+    try:
+        ret['hour'] = split[0]
+        ret['min'] = split[1]
+        ret['sec'] = split[2]
+        ret['char'] = split[3]
+        ret['emotion'] = split[4]
+        ret['noise'] = split[5]
+        ret['transcr'] = os.path.splitext(split[6])[0]
+    except IndexError as e:
+        return None
+    return ret

@@ -12,7 +12,7 @@ import numpy as np
 from pathlib import Path
 import uvicorn
 from peewee import *
-from gui.database import GPTSovitsDatabase, RefAudio
+from gui.database import GPTSovitsDatabase, RefAudio, SERVER_DB_FILE
 from gui.util import (get_available_filename, sanitize_filename,
     base64_to_audio_file)
 
@@ -66,7 +66,7 @@ def init_pipeline():
 
 app = FastAPI()
 tts_config, tts_pipeline = init_pipeline()
-database = GPTSovitsDatabase()
+database = GPTSovitsDatabase(db_file=SERVER_DB_FILE)
 LOCAL_REF_SOUNDS_FOLDER = 'ref_sounds/'
 os.makedirs(LOCAL_REF_SOUNDS_FOLDER, exist_ok=True)
     
@@ -135,6 +135,11 @@ def post_ref_audio(info : UploadRefAudioInfo, response: Response):
         utterance=info.utterance)
     response.status_code = 201
     return
+
+
+@app.get("/db_path")
+def db_path():
+    return Path(SERVER_DB_FILE).absolute()
     
 
 @app.get("/list_ref_audio")
@@ -144,6 +149,14 @@ def list_ref_audio():
         'filepath': v.local_filepath,
         'utterance': v.utterance
     } for v in database.list_ref_audio()}
+    
+
+class TestHashesInfo(BaseModel):
+    hashes: list[str] = []
+
+@app.get("/test_hashes")
+def test_hashes(info: TestHashesInfo):
+    return database.test_hashes(info.hashes)
 
 
 class SetModelsInfo(BaseModel):
