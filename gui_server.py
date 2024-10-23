@@ -93,9 +93,9 @@ def set_models(info: SetModelsInfo):
 class GenerateInfo(BaseModel):
     text: str = ""
     text_lang: str = "en"
-    ref_audio_path: str
-    aux_ref_audio_paths: list = []
-    prompt_text: str
+    ref_audio_path: Optional[str] = None
+    aux_ref_audio_paths: Optional[list] = None
+    prompt_text: Optional[str] = None
     prompt_lang: str = "en"
     top_k: int = 5
     top_p: float = 1.0
