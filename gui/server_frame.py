@@ -28,6 +28,8 @@ class ServerFrame(QGroupBox):
         core.updateConnectionStatus.connect(
             lambda t: self.status_label.setText(
                 f"Connection status: {t}"))
+        core.connectionBusy.connect(
+            lambda busy: self.pb.setEnabled(not busy))
 
         self.pb.clicked.connect(
             self.try_connect_cb)

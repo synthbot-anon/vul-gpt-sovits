@@ -3,6 +3,7 @@ from gui.connection import GetConnectionWorker
 
 class GPTSovitsCore(QObject):
     updateConnectionStatus = pyqtSignal(str)
+    connectionBusy = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
@@ -18,5 +19,6 @@ class GPTSovitsCore(QObject):
         worker.emitters.updateHost.connect(lam1)
         worker.emitters.updateStatus.connect(lambda status: 
         self.updateConnectionStatus.emit(status))
+        worker.emitters.isBusy.connect(self.connectionBusy)
 
         self.thread_pool.start(worker)

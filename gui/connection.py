@@ -2,6 +2,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, QRunnable
 import httpx
 
 class GetConnectionWorkerEmitters(QObject):
+    isBusy = pyqtSignal(bool)
     updateHost = pyqtSignal(str)
     updateStatus = pyqtSignal(str)
 
@@ -12,6 +13,7 @@ class GetConnectionWorker(QRunnable):
         self.emitters = GetConnectionWorkerEmitters()
 
     def run(self):
+        self.emitters.isBusy.emit(True)
         host = self.host
         host = host.strip()
         self.emitters.updateStatus.emit(
@@ -41,3 +43,5 @@ class GetConnectionWorker(QRunnable):
             self.emitters.updateStatus.emit(
                 f"Error connecting: {e}"
             )
+        finally:
+            self.emitters.isBusy.emit(False)
