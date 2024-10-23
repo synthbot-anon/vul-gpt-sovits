@@ -20,3 +20,4 @@ ffprobe*
 *.list
 *.ipynb
 *.db
+ref_audios
