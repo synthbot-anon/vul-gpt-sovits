@@ -19,3 +19,4 @@ ffprobe*
 *_data*
 *.list
 *.ipynb
+*.db
