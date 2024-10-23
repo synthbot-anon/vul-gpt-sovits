@@ -6,6 +6,9 @@ import os, re, logging
 import sys
 import torch
 import json
+import random
+import base64
+import numpy as np
 from pathlib import Path
 
 # sys path
@@ -90,8 +93,8 @@ class GenerateInfo(BaseModel):
     text_lang: str = "en"
     ref_audio_path: str
     aux_ref_audio_paths: list = []
-    ref_audio_text: str
-    ref_audio_lang: str = "en"
+    prompt_text: str
+    prompt_lang: str = "en"
     top_k: int = 5
     top_p: float = 1.0
     temperature: float = 1.0
@@ -106,12 +109,14 @@ class GenerateInfo(BaseModel):
     repetition_penalty: float = 1.35
     keep_random: bool = True
 
-def generate_wrapper(info: GenerateInfo):
-    seed = -1 if keep_random else seed
+async def generate_wrapper(info: GenerateInfo):
+    seed = -1 if info.keep_random else seed
     actual_seed = seed if seed not in [-1, "", None] else random.randrange(1 << 32)
-    for item in tts_pipeline.run(info.json()):
+    for item in tts_pipeline.run(json.loads(info.json())):
+        sr, audio = item
         chunk = {
-            'item': item.tolist(),
+            'sr': sr,
+            'audio': base64.b64encode(audio).decode("ascii"),
             'actual_seed': actual_seed
         }
         yield json.dumps(chunk) # What is "item" anyways?
