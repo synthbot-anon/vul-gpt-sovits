@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QGroupBox, QVBoxLayout, QTableWidget, QTableWidgetItem,
+    QGroupBox, QVBoxLayout, 
     QHeaderView, QCheckBox, QPushButton, QFrame, QHBoxLayout,
     QLabel, QLineEdit, QComboBox)
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
@@ -8,18 +8,26 @@ from gui.database import GPTSovitsDatabase, CLIENT_DB_FILE, RefAudio
 from gui.util import ppp_parse, AUDIO_EXTENSIONS
 from gui.audio_preview import AudioPreviewWidget
 from gui.file_button import FileButton
+from gui.ref_audio_table import AudioTableModel, AudioTableView
 from pathlib import Path
 from functools import partial
 from typing import Optional
+from rapidfuzz import process, fuzz
+import logging
+from logging import info, basicConfig, debug
 import soundfile as sf
 import hashlib
 import os
+import time
+
+logging.basicConfig(
+    level = logging.DEBUG
+)
 
 class RefAudiosContext:
     def __init__(self, core : GPTSovitsCore):
         self.core = core
         self.database = GPTSovitsDatabase(db_file=CLIENT_DB_FILE)
-        
         self.autoload_from_dir()
         
     def autoload_from_dir(self):
@@ -35,6 +43,9 @@ class RefAudiosContext:
 
     def get_ref_audios(self):
         return self.database.list_ref_audio()
+
+    def get_ref_audio(self, audio_hash : str):
+        return self.database.get_ref_audio(audio_hash)
     
     def __len__(self):
         return RefAudio.select().count()
@@ -42,7 +53,8 @@ class RefAudiosContext:
     def add_ref_audio(
         self,
         local_filepath: Path,
-        override_list_position: Optional[int] = None):
+        override_list_position: Optional[int] = None,
+        do_override_delete = None):
         assert local_filepath.exists()
         
         sha256_hash = hashlib.sha256()
@@ -66,12 +78,16 @@ class RefAudiosContext:
             list_position = len(self)
                 
         # Append to end of list
+        override_delete = None
+        if do_override_delete == True:
+            override_delete = False
         self.database.update_with_ref_audio(
             audio_hash=sha256_hash.hexdigest(),
             local_filepath=str(local_filepath),
             character=character,
             utterance=utterance,
-            list_position=list_position)
+            list_position=list_position,
+            override_delete=override_delete)
 
     def update_ref_audio(
         self,
@@ -87,6 +103,7 @@ class RefAudiosContext:
             ref_audio.utterance = utterance
         if character is not None:
             ref_audio.character = character
+        ref_audio.save()
         
     # this won't handle uploading; that only happens once we actually
     # need to send TTS requests
@@ -94,6 +111,7 @@ class RefAudiosContext:
     # idle time?
 
 class RefAudiosFrame(QGroupBox):
+    # signal(character filter, fuzzy text filter)
     shouldBuildTable = pyqtSignal()
     def __init__(self, core : GPTSovitsCore):
         super().__init__(title="Reference Audios")
@@ -102,6 +120,7 @@ class RefAudiosFrame(QGroupBox):
         self.table = None
         
         self.hashesCheckedSet : set[str] = set()
+        self.rowToHashMap = dict()
         self.hashToPathMap = dict()
         
         self.shouldBuildTable.connect(self.build_table)
@@ -121,15 +140,23 @@ class RefAudiosFrame(QGroupBox):
         self.add_ref_button.filesSelected.connect(
             self.add_selected_ref_audios            
         )
-        self.delete_button = QPushButton("Delete highlighted rows (n)")
+        self.delete_button = QPushButton("Delete highlighted rows (0)")
+        self.delete_button.clicked.connect(
+            self.delete_selected_rows
+        )
         bflay.addWidget(self.delete_button)
         
         bf2 = QFrame()
         bflay = QHBoxLayout(bf2)
         bflay.addWidget(QLabel("Filter by character"))
-        bflay.addWidget(QComboBox())
+        cf = QFrame()
+        self.cflay = QVBoxLayout(cf)
+        bflay.addWidget(cf)
         bflay.addWidget(QLabel("Filter by utterance"))
-        bflay.addWidget(QLineEdit())
+        self.utterance_edit = QLineEdit()
+        self.utterance_edit.editingFinished.connect(
+            self.shouldBuildTable)
+        bflay.addWidget(self.utterance_edit)
 
         tbf = QFrame()
         self.tbflay = QVBoxLayout(tbf)
@@ -137,7 +164,50 @@ class RefAudiosFrame(QGroupBox):
         self.lay.addWidget(bf)
         self.lay.addWidget(bf2)
 
+        self.build_character_filter()
         self.build_table()
+
+    # TODO this needs to be triggered after edits
+    def build_character_filter(self):
+        self.ras = self.context.get_ref_audios()
+        character_filters = set()
+        for ra in self.ras:
+            if ra.character is not None:
+                character_filters.add(ra.character)
+
+        if (hasattr(self, 'character_filter_cb') and 
+            isinstance(self.character_filter_cb, QComboBox)):
+            self.character_filter_cb : QComboBox
+            self.character_filter_cb.deleteLater()
+            del self.character_filter_cb
+
+        self.character_filter_cb = QComboBox()
+        # Representing no filter
+        self.character_filter_cb.addItem('')
+        character_filters = list(character_filters)
+        character_filters.sort()
+        for character in character_filters:
+            self.character_filter_cb.addItem(character)
+
+        self.character_filter_cb.currentIndexChanged.connect(
+            self.shouldBuildTable
+        )
+        self.cflay.addWidget(self.character_filter_cb)
+
+    def delete_selected_rows(self, b):
+        for row in self.get_selected_rows():
+            ra = self.context.get_ref_audio(self.rowToHashMap[row])
+            ra.is_deleted = True
+            ra.save()
+        self.shouldBuildTable.emit()
+        
+    def get_selected_rows(
+        self):
+        self.table : AudioTableView
+        selection_model = self.table.selectionModel()
+        selected_rows = selection_model.selectedRows()
+        selected_rows = {row.row() for row in selected_rows}
+        return selected_rows
         
     def update_hashes_set(self, 
         check_box: QCheckBox,
@@ -145,7 +215,7 @@ class RefAudiosFrame(QGroupBox):
         if check_box.isChecked():
             self.hashesCheckedSet.add(audio_hash)
         else:
-            self.hashesCheckedSet.remove(audio_hash)
+            self.hashesCheckedSet.discard(audio_hash)
             
     def add_selected_ref_audios(self, 
         ras : list[str]):
@@ -153,19 +223,60 @@ class RefAudiosFrame(QGroupBox):
             return
         for ra in ras:
             ra : str
-            self.context.add_ref_audio(Path(ra))
+            self.context.add_ref_audio(Path(ra), do_override_delete=True)
         self.shouldBuildTable.emit()
+
+    def fuzzy_utterance_filter(self, ras : list[RefAudio]):
+        query = self.utterance_edit.text().strip()
+        if len(query) == 0:
+            return ras
+        ra : RefAudio
+        print(f"Performing fuzzy filter for {query}")
+        by_utterance = {ra.utterance : ra for ra in ras}
+        utterances = [k for k in by_utterance.keys()]
+        matches = process.extract(query, utterances,
+            scorer=fuzz.WRatio, score_cutoff=50)
+        return [by_utterance[match[0]] for match in matches]
+
+    def filter_by_characters(self, ras : list[RefAudio]):
+        self.character_filter_cb : QComboBox
+        character_choice = str(self.character_filter_cb.currentText())
+        if not len(character_choice):
+            return ras
+        else:
+            return [ra for ra in ras if ra.character == character_choice]
         
     def build_table(self):
-        if isinstance(self.table, QTableWidget):
+        ras : list[RefAudio] = self.context.get_ref_audios()
+
+        # Filter deleted files
+        ras = [ra for ra in ras if not ra.is_deleted]
+
+        # Apply character filter
+        ras = self.filter_by_characters(ras)
+
+        # Apply text filter
+        ras = self.fuzzy_utterance_filter(ras)
+
+        # Most recent files should appear at top
+        ras.sort(reverse=True, 
+            key=lambda ra:
+            (ra.list_position if ra.list_position is not None else 0))
+
+        st = time.perf_counter()
+        self.hashToPathMap = {
+            ra.audio_hash : ra.local_filepath for ra in ras
+        }
+        self.rowToHashMap.clear()
+
+        if hasattr(self, 'table') and isinstance(self.table, AudioTableView):
+            self.table : AudioTableView
             self.table.deleteLater()
             del self.table
-        self.table = QTableWidget()
-        table_cols = [
-            'Filepath', 'Character', 'Utterance', 'Hash', 'Select', 'Play']
 
-        self.table.setColumnCount(len(table_cols))
-        self.table.setHorizontalHeaderLabels(table_cols)
+        model = AudioTableModel(ras, self.hashesCheckedSet)
+        self.table = AudioTableView(model, ras, self.hashesCheckedSet)
+
         self.table.setMinimumWidth(900)
         self.table.setMinimumHeight(400)
         
@@ -187,50 +298,18 @@ class RefAudiosFrame(QGroupBox):
             QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(5,
             QHeaderView.Fixed)
-
-        ras : list[RefAudio] = self.context.get_ref_audios()
-        ras.sort(reverse=True, # So most recent files appear at top
-            key=lambda ra:
-            (ra.list_position if ra.list_position is not None else 0))
-        self.hashToPathMap = {
-            ra.audio_hash : ra.local_filepath for ra in ras
-        }
-        self.table.setRowCount(len(ras))
+        
         for i,ra in enumerate(ras):
-            ra : RefAudio
-            filepath_item = QTableWidgetItem(ra.local_filepath)
-            filepath_item.setFlags(filepath_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(
-                i, 0, filepath_item)
-            self.table.setItem(
-                i, 1, QTableWidgetItem(ra.character))
-            utterance_item = QTableWidgetItem(ra.utterance)
-            #utterance_item.stateChanged
-            self.table.setItem(
-                i, 2, utterance_item)
-            hash_item = QTableWidgetItem(ra.audio_hash[:7])
-            hash_item.setFlags(hash_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(
-                i, 3, hash_item)
-            check_box = QCheckBox()
-            if ra.audio_hash in self.hashesCheckedSet:
-                check_box.setChecked(True)
-            check_box.stateChanged.connect(
-                partial(self.update_hashes_set,
-                check_box = check_box,
-                audio_hash = ra.audio_hash)
-            )
-            self.table.setCellWidget(i, 4, check_box)
-            preview_button = AudioPreviewWidget(
-                button_only=True, drag_enabled=False, pausable=False)
-            preview_button.from_file(ra.local_filepath)
-            self.table.setCellWidget(i, 5, preview_button)
-            
+            self.rowToHashMap[i] = ra.audio_hash
+
+        self.table.selectionModel().selectionChanged.connect(
+            lambda: self.delete_button.setText(
+                f"Delete highlighted rows ({len(self.get_selected_rows())})"))
         self.tbflay.addWidget(self.table)
+        et = time.perf_counter()
+        debug(f"Time to build widgets: {et - st:.8f} s")
         
     # TODO: Manipulation buttons:
-    # Add from file (drag and drop)
-    # Delete (should we actually delete or just set a 'delete' flag?)
     # You should be able to edit the character and text inplace
     # But not the file path or hash
     # TODO: Search buttons

@@ -17,6 +17,7 @@ class RefAudio(BaseModel):
     utterance = TextField(null=True)
     character = TextField(null=True)
     list_position = IntegerField(null=True)
+    is_deleted = BooleanField(default=False)
 
 class GPTSovitsDatabase:
     def __init__(self, db_file):
@@ -40,13 +41,21 @@ class GPTSovitsDatabase:
         local_filepath: str,
         utterance: Optional[str] = None,
         character: Optional[str] = None,
-        list_position: Optional[int] = None):
+        list_position: Optional[int] = None,
+        override_delete: Optional[bool] = None):
         ref_audio = self.get_ref_audio(audio_hash)
         if ref_audio is not None:
-            ref_audio.local_filepath = local_filepath
-            ref_audio.utterance = utterance
-            ref_audio.character = character
-            ref_audio.list_position = list_position
+            # Avoid overwriting these items
+            if ref_audio.local_filepath is None:
+                ref_audio.local_filepath = local_filepath
+            if ref_audio.utterance is None:
+                ref_audio.utterance = utterance
+            if ref_audio.character is None:
+                ref_audio.character = character
+            if ref_audio.list_position is None:
+                ref_audio.list_position = list_position
+            if override_delete is not None:
+                ref_audio.is_deleted = override_delete
             ref_audio.save()
         else:
             ref_audio = RefAudio.create(
@@ -55,6 +64,7 @@ class GPTSovitsDatabase:
                 utterance=utterance,
                 character=character,
                 list_position=list_position)
+        return ref_audio
             
     def test_hashes(hashes: list[str]):
         r: RefAudio
