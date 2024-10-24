@@ -166,12 +166,17 @@ class SmallAudioPreviewWidget(QWidget):
         self.player.setMedia(QMediaContent(QUrl.fromLocalFile(
             os.path.abspath(self.local_file))))
         self.player.play()
+        self.player.stateChanged.connect(self.state_changed)
+
+    def state_changed(self, state):
+        if (state == QMediaPlayer.StoppedState):
+            self.pb.setIcon(self.style().standardIcon(
+                getattr(QStyle, 'SP_MediaPlay')))
+            self.is_playing = False
 
     def toggle_play(self):
         if self.is_playing:
             self.stop()
-            self.pb.setIcon(self.style().standardIcon(
-                getattr(QStyle, 'SP_MediaPlay')))
         else: 
             self.play()
             self.pb.setIcon(self.style().standardIcon(
