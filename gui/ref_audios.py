@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QGroupBox, QVBoxLayout, 
+    QGroupBox, QVBoxLayout, QTableView,
     QHeaderView, QCheckBox, QPushButton, QFrame, QHBoxLayout,
     QLabel, QLineEdit, QComboBox)
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
@@ -205,8 +205,8 @@ class RefAudiosFrame(QGroupBox):
         self):
         self.table : AudioTableView
         selection_model = self.table.selectionModel()
-        selected_rows = selection_model.selectedRows()
-        selected_rows = {row.row() for row in selected_rows}
+        selected_indexes = selection_model.selectedIndexes()
+        selected_rows = {index.row() for index in selected_indexes}
         return selected_rows
         
     def update_hashes_set(self, 
@@ -276,6 +276,8 @@ class RefAudiosFrame(QGroupBox):
 
         model = AudioTableModel(ras, self.hashesCheckedSet)
         self.table = AudioTableView(model, ras, self.hashesCheckedSet)
+        self.table.setSelectionBehavior(QTableView.SelectRows)
+        self.table.setSelectionMode(QTableView.ExtendedSelection)
 
         self.table.setMinimumWidth(900)
         self.table.setMinimumHeight(400)
@@ -307,7 +309,6 @@ class RefAudiosFrame(QGroupBox):
                 f"Delete highlighted rows ({len(self.get_selected_rows())})"))
         self.tbflay.addWidget(self.table)
         et = time.perf_counter()
-        debug(f"Time to build widgets: {et - st:.8f} s")
         
     # TODO: Manipulation buttons:
     # You should be able to edit the character and text inplace
