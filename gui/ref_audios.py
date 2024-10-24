@@ -236,7 +236,7 @@ class RefAudiosFrame(QGroupBox):
         by_utterance = {ra.utterance : ra for ra in ras}
         utterances = [k for k in by_utterance.keys()]
         matches = process.extract(query, utterances,
-            scorer=fuzz.WRatio, score_cutoff=70)
+            scorer=fuzz.WRatio, score_cutoff=67)
         return [by_utterance[match[0]] for match in matches]
 
     def filter_by_characters(self, ras : list[RefAudio]):
