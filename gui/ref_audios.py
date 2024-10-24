@@ -8,7 +8,9 @@ from gui.database import GPTSovitsDatabase, CLIENT_DB_FILE, RefAudio
 from gui.util import ppp_parse, AUDIO_EXTENSIONS
 from gui.audio_preview import AudioPreviewWidget
 from gui.file_button import FileButton
-from gui.ref_audio_table import AudioTableModel, AudioTableView
+from gui.ref_audio_table import (AudioTableModel, AudioTableView,
+    FILEPATH_COL, CHARACTER_COL, EMOTION_COL, UTTERANCE_COL,
+    AUDIOHASH_COL, CHECKBOX_COL, PREVIEW_COL)
 from pathlib import Path
 from functools import partial
 from typing import Optional
@@ -67,9 +69,11 @@ class RefAudiosContext:
         ppp_meta = ppp_parse(str(local_filepath))
         character = None 
         utterance = None
+        emotion = None
         if ppp_meta is not None:
             character = ppp_meta['char']
             utterance = ppp_meta['transcr']
+            emotion = ppp_meta['emotion']
             
         list_position = None
         if override_list_position is not None:
@@ -86,6 +90,7 @@ class RefAudiosContext:
             local_filepath=str(local_filepath),
             character=character,
             utterance=utterance,
+            emotion=emotion,
             list_position=list_position,
             override_delete=override_delete)
 
@@ -124,7 +129,6 @@ class RefAudiosFrame(QGroupBox):
         self.hashToPathMap = dict()
         
         self.shouldBuildTable.connect(self.build_table)
-        self.shouldBuildTable.connect(self.build_character_filter)
         
         #pb = QPushButton("Rebuild table")
         #pb.clicked.connect(self.shouldBuildTable)
@@ -153,17 +157,26 @@ class RefAudiosFrame(QGroupBox):
         cf = QFrame()
         self.cflay = QVBoxLayout(cf)
         bflay.addWidget(cf)
-        bflay.addWidget(QLabel("Filter by utterance"))
+        ef = QFrame()
+        self.emotion_edit = QLineEdit()
+        self.emotion_edit.editingFinished.connect(self.shouldBuildTable)
+        bflay.addWidget(QLabel("Filter by emotion (comma separated)"))
+        bflay.addWidget(self.emotion_edit)
+
+        bf3 = QFrame()
+        bf3lay = QHBoxLayout(bf3)
+        bf3lay.addWidget(QLabel("Filter by utterance"))
         self.utterance_edit = QLineEdit()
         self.utterance_edit.editingFinished.connect(
             self.shouldBuildTable)
-        bflay.addWidget(self.utterance_edit)
+        bf3lay.addWidget(self.utterance_edit)
 
         tbf = QFrame()
         self.tbflay = QVBoxLayout(tbf)
         self.lay.addWidget(tbf)
         self.lay.addWidget(bf)
         self.lay.addWidget(bf2)
+        self.lay.addWidget(bf3)
 
         self.build_character_filter()
         self.build_table()
@@ -173,13 +186,15 @@ class RefAudiosFrame(QGroupBox):
         self.ras = self.context.get_ref_audios()
         character_filters = set()
         for ra in self.ras:
-            if ra.character is not None:
+            if ra.character is not None and not ra.is_deleted:
                 character_filters.add(ra.character)
 
+        old_selection : str = ''
         if (hasattr(self, 'character_filter_cb') and 
             isinstance(self.character_filter_cb, QComboBox)):
             self.character_filter_cb : QComboBox
             self.character_filter_cb.deleteLater()
+            old_selection = self.character_filter_cb.currentData()
             del self.character_filter_cb
 
         self.character_filter_cb = QComboBox()
@@ -189,6 +204,11 @@ class RefAudiosFrame(QGroupBox):
         character_filters.sort()
         for character in character_filters:
             self.character_filter_cb.addItem(character)
+
+        old_idx = self.character_filter_cb.findText(
+            old_selection)
+        if old_idx != -1:
+            self.character_filter_cb.setCurrentIndex(old_idx)
 
         self.character_filter_cb.currentIndexChanged.connect(
             self.shouldBuildTable
@@ -200,6 +220,7 @@ class RefAudiosFrame(QGroupBox):
             ra = self.context.get_ref_audio(self.rowToHashMap[row])
             ra.is_deleted = True
             ra.save()
+        self.build_character_filter()
         self.shouldBuildTable.emit()
         
     def get_selected_rows(
@@ -225,6 +246,7 @@ class RefAudiosFrame(QGroupBox):
         for ra in ras:
             ra : str
             self.context.add_ref_audio(Path(ra), do_override_delete=True)
+        self.build_character_filter()
         self.shouldBuildTable.emit()
 
     def fuzzy_utterance_filter(self, ras : list[RefAudio]):
@@ -236,7 +258,7 @@ class RefAudiosFrame(QGroupBox):
         by_utterance = {ra.utterance : ra for ra in ras}
         utterances = [k for k in by_utterance.keys()]
         matches = process.extract(query, utterances,
-            scorer=fuzz.WRatio, score_cutoff=67)
+            scorer=fuzz.WRatio, score_cutoff=60)
         return [by_utterance[match[0]] for match in matches]
 
     def filter_by_characters(self, ras : list[RefAudio]):
@@ -246,6 +268,13 @@ class RefAudiosFrame(QGroupBox):
             return ras
         else:
             return [ra for ra in ras if ra.character == character_choice]
+
+    def filter_by_emotions(self,
+        ras : list[RefAudio]):
+        emotion_filter = self.emotion_edit.text()
+        emotions = [s.strip().lower() for s in emotion_filter.split(',')]
+        return [ra for ra in ras if all(
+            emot in ra.emotion.lower() for emot in emotions)]
         
     def build_table(self):
         ras : list[RefAudio] = self.context.get_ref_audios()
@@ -253,11 +282,14 @@ class RefAudiosFrame(QGroupBox):
         # Filter deleted files
         ras = [ra for ra in ras if not ra.is_deleted]
 
+        # Apply text filter
+        ras = self.fuzzy_utterance_filter(ras)
+
         # Apply character filter
         ras = self.filter_by_characters(ras)
 
-        # Apply text filter
-        ras = self.fuzzy_utterance_filter(ras)
+        # Apply emotion filter
+        ras = self.filter_by_emotions(ras)
 
         # Most recent files should appear at top
         ras.sort(reverse=True, 
@@ -283,23 +315,27 @@ class RefAudiosFrame(QGroupBox):
         self.table.setMinimumWidth(900)
         self.table.setMinimumHeight(400)
         
-        self.table.setColumnWidth(0, 80)
-        self.table.setColumnWidth(1, 120)
-        self.table.setColumnWidth(3, 120)
-        self.table.setColumnWidth(4, 60)
-        self.table.setColumnWidth(5, 60)
+        self.table.setColumnWidth(FILEPATH_COL, 80)
+        self.table.setColumnWidth(CHARACTER_COL, 120)
+        self.table.setColumnWidth(EMOTION_COL, 80)
+        self.table.setColumnWidth(UTTERANCE_COL, 120)
+        self.table.setColumnWidth(AUDIOHASH_COL, 60)
+        self.table.setColumnWidth(CHECKBOX_COL, 60)
+        self.table.setColumnWidth(PREVIEW_COL, 60)
         
-        self.table.horizontalHeader().setSectionResizeMode(0,
+        self.table.horizontalHeader().setSectionResizeMode(FILEPATH_COL,
             QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(1,
+        self.table.horizontalHeader().setSectionResizeMode(CHARACTER_COL,
             QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(2,
+        self.table.horizontalHeader().setSectionResizeMode(EMOTION_COL,
+            QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(UTTERANCE_COL,
             QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(3,
+        self.table.horizontalHeader().setSectionResizeMode(AUDIOHASH_COL,
             QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(4,
+        self.table.horizontalHeader().setSectionResizeMode(CHECKBOX_COL,
             QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(5,
+        self.table.horizontalHeader().setSectionResizeMode(PREVIEW_COL,
             QHeaderView.Fixed)
         
         for i,ra in enumerate(ras):
@@ -311,8 +347,6 @@ class RefAudiosFrame(QGroupBox):
         self.tbflay.addWidget(self.table)
         et = time.perf_counter()
         
-    # TODO: Manipulation buttons:
+    # TODO: Manipulation
     # You should be able to edit the character and text inplace
     # But not the file path or hash
-    # TODO: Search buttons
-    # You should also get a search/filter for utterance/character

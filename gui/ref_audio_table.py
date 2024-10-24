@@ -7,6 +7,14 @@ from functools import partial
 from logging import debug
 import time
 
+FILEPATH_COL = 0
+CHARACTER_COL = 1
+EMOTION_COL = 2
+UTTERANCE_COL = 3
+AUDIOHASH_COL = 4
+CHECKBOX_COL = 5
+PREVIEW_COL = 6
+
 class AudioTableModel(QAbstractTableModel):
     def __init__(self,
         ras : list[RefAudio],
@@ -14,7 +22,7 @@ class AudioTableModel(QAbstractTableModel):
         super().__init__()
         self.ras = ras
         self.hashesCheckedSet = hashesCheckedSet
-        self.headers = ['Filepath', 'Character', 'Utterance', 'Hash', 'Select',
+        self.headers = ['Filepath', 'Character', 'Emotion', 'Utterance', 'Hash', 'Select',
             'Play']
 
     def rowCount(self, parent=None):
@@ -26,13 +34,15 @@ class AudioTableModel(QAbstractTableModel):
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             ra = self.ras[index.row()]
-            if index.column() == 0: # Filepath
+            if index.column() == FILEPATH_COL: # Filepath
                 return ra.local_filepath
-            if index.column() == 1: # Character
+            if index.column() == CHARACTER_COL: # Character
                 return ra.character
-            if index.column() == 2: # Utterance
+            if index.column() == EMOTION_COL: # Emotion
+                return ra.emotion
+            if index.column() == UTTERANCE_COL: # Utterance
                 return ra.utterance
-            if index.column() == 3: # Audio hash (first 7 chars)
+            if index.column() == AUDIOHASH_COL: # Audio hash (first 7 chars)
                 return ra.audio_hash[:7]
         return None
 
@@ -47,11 +57,10 @@ class AudioTableModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.NoItemFlags
 
-        # Items in columns 0 (Filepath), 3 (Audio Hash), and 4 (Checkbox) are non-editable
-        if index.column() in (0, 3):  # Column indices for non-editable items
+        if index.column() in (FILEPATH_COL, AUDIOHASH_COL):  # Column indices for non-editable items
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled  # Non-editable items
 
-        if index.column() == 4:  # Checkbox (column 4)
+        if index.column() == CHECKBOX_COL:  # Checkbox 
             return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable  # Checkbox items
 
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable  # Editable items
@@ -83,18 +92,18 @@ class AudioTableView(QTableView):
             partial(self.update_hashes_set, 
             check_box=check_box, audio_hash=ra.audio_hash)
         )
-        self.setIndexWidget(self.model().index(row, 4), check_box)
+        self.setIndexWidget(self.model().index(row, CHECKBOX_COL), check_box)
 
         preview = SmallAudioPreviewWidget(
             ra.local_filepath)
-        self.setIndexWidget(self.model().index(row, 5), preview)
+        self.setIndexWidget(self.model().index(row, PREVIEW_COL), preview)
 
         self.visible_widgets[row] = (check_box, preview)
 
     def remove_custom_widgets(self, row):
         if row in self.visible_widgets:
-            self.setIndexWidget(self.model().index(row, 4), None)
-            self.setIndexWidget(self.model().index(row, 5), None)
+            self.setIndexWidget(self.model().index(row, CHECKBOX_COL), None)
+            self.setIndexWidget(self.model().index(row, PREVIEW_COL), None)
             del self.visible_widgets[row]
 
     def on_scroll(self):
