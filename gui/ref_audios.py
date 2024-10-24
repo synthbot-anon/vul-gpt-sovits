@@ -185,7 +185,6 @@ class RefAudiosFrame(QGroupBox):
         self.build_character_filter()
         self.build_table()
 
-    # TODO this needs to be triggered after edits
     def build_character_filter(self):
         self.ras = self.context.get_ref_audios()
         character_filters = set()
@@ -194,14 +193,11 @@ class RefAudiosFrame(QGroupBox):
                 character_filters.add(ra.character)
 
         old_selection : str = ''
-        if (hasattr(self, 'character_filter_cb') and 
-            isinstance(self.character_filter_cb, QComboBox)):
-            self.character_filter_cb : QComboBox
-            self.character_filter_cb.deleteLater()
-            old_selection = self.character_filter_cb.currentData()
-            del self.character_filter_cb
-
-        self.character_filter_cb = QComboBox()
+        if not hasattr(self, 'character_filter_cb'):
+            self.character_filter_cb = QComboBox()
+        else:
+            old_selection = self.character_filter_cb.currentText()
+        self.character_filter_cb.clear()
         # Representing no filter
         self.character_filter_cb.addItem('')
         character_filters = list(character_filters)
@@ -314,7 +310,9 @@ class RefAudiosFrame(QGroupBox):
             self.table.deleteLater()
             del self.table
 
+        # data modification logic is in AudioTableModel
         model = AudioTableModel(ras, self.hashesCheckedSet)
+        model.dataHasChanged.connect(self.build_character_filter)
         self.table = AudioTableView(model, ras, self.hashesCheckedSet)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.table.setSelectionMode(QTableView.ExtendedSelection)
@@ -344,7 +342,7 @@ class RefAudiosFrame(QGroupBox):
             QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(PREVIEW_COL,
             QHeaderView.Fixed)
-        
+
         for i,ra in enumerate(ras):
             self.rowToHashMap[i] = ra.audio_hash
 
