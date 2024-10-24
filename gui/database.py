@@ -18,6 +18,7 @@ class RefAudio(BaseModel):
     character = TextField(null=True)
     emotion = TextField(null=True)
     list_position = IntegerField(null=True)
+    duration = FloatField(null=True)
     is_deleted = BooleanField(default=False)
 
 class GPTSovitsDatabase:
@@ -44,6 +45,7 @@ class GPTSovitsDatabase:
         character: Optional[str] = None,
         emotion: Optional[str] = None,
         list_position: Optional[int] = None,
+        duration: Optional[float] = None,
         override_delete: Optional[bool] = None):
         ref_audio = self.get_ref_audio(audio_hash)
         if ref_audio is not None:
@@ -58,6 +60,8 @@ class GPTSovitsDatabase:
                 ref_audio.emotion = emotion
             if ref_audio.list_position is None:
                 ref_audio.list_position = list_position
+            if ref_audio.duration is None:
+                ref_audio.duration = duration
             if override_delete is not None:
                 ref_audio.is_deleted = override_delete
             ref_audio.save()
@@ -67,6 +71,8 @@ class GPTSovitsDatabase:
                 local_filepath=local_filepath,
                 utterance=utterance,
                 character=character,
+                emotion=emotion,
+                duration=duration,
                 list_position=list_position)
         return ref_audio
             

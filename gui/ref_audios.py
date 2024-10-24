@@ -10,7 +10,7 @@ from gui.audio_preview import AudioPreviewWidget
 from gui.file_button import FileButton
 from gui.ref_audio_table import (AudioTableModel, AudioTableView,
     FILEPATH_COL, CHARACTER_COL, EMOTION_COL, UTTERANCE_COL,
-    AUDIOHASH_COL, CHECKBOX_COL, PREVIEW_COL)
+    AUDIOHASH_COL, CHECKBOX_COL, PREVIEW_COL, DURATION_COL)
 from pathlib import Path
 from functools import partial
 from typing import Optional
@@ -21,6 +21,7 @@ import soundfile as sf
 import hashlib
 import os
 import time
+from pydub import AudioSegment
 
 #logging.basicConfig(
 #    level = logging.DEBUG
@@ -61,8 +62,12 @@ class RefAudiosContext:
         
         sha256_hash = hashlib.sha256()
         with open(local_filepath, 'rb') as audio_file:
+            audio_segment = AudioSegment.from_file(audio_file)
+            audio_file.seek(0)
             for byte_block in iter(lambda: audio_file.read(4096), b""):
                 sha256_hash.update(byte_block)
+
+        duration_seconds = len(audio_segment) / 1000.0
                 
         # If this is a PPP-style audio name,
         # we can try roughly parsing it for extra data
@@ -91,6 +96,7 @@ class RefAudiosContext:
             character=character,
             utterance=utterance,
             emotion=emotion,
+            duration=duration_seconds,
             list_position=list_position,
             override_delete=override_delete)
 
@@ -323,6 +329,7 @@ class RefAudiosFrame(QGroupBox):
         self.table.setColumnWidth(FILEPATH_COL, 80)
         self.table.setColumnWidth(CHARACTER_COL, 120)
         self.table.setColumnWidth(EMOTION_COL, 80)
+        self.table.setColumnWidth(DURATION_COL, 80)
         self.table.setColumnWidth(UTTERANCE_COL, 120)
         self.table.setColumnWidth(AUDIOHASH_COL, 60)
         self.table.setColumnWidth(CHECKBOX_COL, 60)
@@ -333,6 +340,8 @@ class RefAudiosFrame(QGroupBox):
         self.table.horizontalHeader().setSectionResizeMode(CHARACTER_COL,
             QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(EMOTION_COL,
+            QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(DURATION_COL,
             QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(UTTERANCE_COL,
             QHeaderView.Stretch)

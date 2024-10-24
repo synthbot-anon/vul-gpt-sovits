@@ -12,10 +12,11 @@ import time
 FILEPATH_COL = 0
 CHARACTER_COL = 1
 EMOTION_COL = 2
-UTTERANCE_COL = 3
-AUDIOHASH_COL = 4
-CHECKBOX_COL = 5
-PREVIEW_COL = 6
+DURATION_COL = 3
+UTTERANCE_COL = 4
+AUDIOHASH_COL = 5
+CHECKBOX_COL = 6
+PREVIEW_COL = 7
 
 class CustomDelegate(QStyledItemDelegate):
     # Signal to notify when editing is finished
@@ -34,7 +35,7 @@ class AudioTableModel(QAbstractTableModel):
         super().__init__()
         self.ras = ras
         self.hashesCheckedSet = hashesCheckedSet
-        self.headers = ['Filepath', 'Character', 'Emotion', 'Utterance', 'Hash', 'Select',
+        self.headers = ['Filepath', 'Character', 'Emotion', 'Duration', 'Utterance', 'Hash', 'Select',
             'Play']
 
     def rowCount(self, parent=None):
@@ -52,6 +53,8 @@ class AudioTableModel(QAbstractTableModel):
                 return ra.character
             if index.column() == EMOTION_COL: # Emotion
                 return ra.emotion
+            if index.column() == DURATION_COL: # Duration
+                return f"{ra.duration:.2f}"
             if index.column() == UTTERANCE_COL: # Utterance
                 return ra.utterance
             if index.column() == AUDIOHASH_COL: # Audio hash 

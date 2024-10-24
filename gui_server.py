@@ -183,7 +183,6 @@ def set_models(info: SetModelsInfo):
         'sovits_path': tts_pipeline.configs.t2s_weights_path
     }
 
-
 class GenerateInfo(BaseModel):
     text: str = ""
     text_lang: str = "en"
