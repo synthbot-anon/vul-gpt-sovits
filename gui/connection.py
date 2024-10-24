@@ -36,6 +36,7 @@ class GetConnectionWorker(QRunnable):
                 self.emitters.updateStatus.emit(
                     f"Successfully connected to {host}")
             else:
+                self.host = None
                 self.emitters.updateStatus.emit(
                     f"Host connection failed with status {response.status_code}"
                 )
@@ -43,5 +44,6 @@ class GetConnectionWorker(QRunnable):
             self.emitters.updateStatus.emit(
                 f"Error connecting: {e}"
             )
+            self.host = None
         finally:
             self.emitters.isBusy.emit(False)
