@@ -114,6 +114,9 @@ class ModelSelection(QGroupBox):
         self.gpt_weights_cb.clear()
         self.folder_weights_cb.clear()
 
+        if data is None:
+            return
+
         loose_models : dict = data['loose_models']
         sovits_loose : list = loose_models['sovits_weights']
         gpt_loose : list = loose_models['gpt_weights']
