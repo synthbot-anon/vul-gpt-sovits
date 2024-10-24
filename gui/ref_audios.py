@@ -124,6 +124,7 @@ class RefAudiosFrame(QGroupBox):
         self.hashToPathMap = dict()
         
         self.shouldBuildTable.connect(self.build_table)
+        self.shouldBuildTable.connect(self.build_character_filter)
         
         #pb = QPushButton("Rebuild table")
         #pb.clicked.connect(self.shouldBuildTable)
@@ -231,11 +232,11 @@ class RefAudiosFrame(QGroupBox):
         if len(query) == 0:
             return ras
         ra : RefAudio
-        print(f"Performing fuzzy filter for {query}")
+        #print(f"Performing fuzzy filter for {query}")
         by_utterance = {ra.utterance : ra for ra in ras}
         utterances = [k for k in by_utterance.keys()]
         matches = process.extract(query, utterances,
-            scorer=fuzz.WRatio, score_cutoff=50)
+            scorer=fuzz.WRatio, score_cutoff=70)
         return [by_utterance[match[0]] for match in matches]
 
     def filter_by_characters(self, ras : list[RefAudio]):
