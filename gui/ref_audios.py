@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
 from gui.core import GPTSovitsCore
 from gui.database import GPTSovitsDatabase, CLIENT_DB_FILE, RefAudio
-from gui.util import ppp_parse, AUDIO_EXTENSIONS
+from gui.util import ppp_parse, AUDIO_EXTENSIONS, qshrink
 from gui.audio_preview import AudioPreviewWidget
 from gui.file_button import FileButton
 from gui.ref_audio_table import (AudioTableModel, AudioTableView,
@@ -136,6 +136,7 @@ class RefAudiosFrame(QGroupBox):
         
         bf = QFrame()
         bflay = QHBoxLayout(bf)
+        qshrink(bflay)
 
         self.add_ref_button = FileButton(
             label="Add reference audio",
@@ -153,9 +154,11 @@ class RefAudiosFrame(QGroupBox):
         
         bf2 = QFrame()
         bflay = QHBoxLayout(bf2)
+        qshrink(bflay)
         bflay.addWidget(QLabel("Filter by character"))
         cf = QFrame()
         self.cflay = QVBoxLayout(cf)
+        qshrink(self.cflay)
         bflay.addWidget(cf)
         ef = QFrame()
         self.emotion_edit = QLineEdit()
@@ -165,6 +168,7 @@ class RefAudiosFrame(QGroupBox):
 
         bf3 = QFrame()
         bf3lay = QHBoxLayout(bf3)
+        qshrink(bf3lay)
         bf3lay.addWidget(QLabel("Filter by utterance"))
         self.utterance_edit = QLineEdit()
         self.utterance_edit.editingFinished.connect(

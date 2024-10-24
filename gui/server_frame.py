@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout,
     QHBoxLayout, QLineEdit, QFrame, QLabel,
     QPushButton)
 from gui.core import GPTSovitsCore
+from gui.util import qshrink
 
 class ServerFrame(QGroupBox):
     def __init__(self, core: GPTSovitsCore):
@@ -9,9 +10,11 @@ class ServerFrame(QGroupBox):
         
         l1 = QVBoxLayout(self)
         f1 = QFrame()
+        qshrink(l1, 4)
         l1.addWidget(f1)
         
         l2 = QHBoxLayout(f1)
+        qshrink(l2, 4)
         l2.addWidget(QLabel("Enter server host: "))
         l2.addStretch()
         self.le = QLineEdit()
