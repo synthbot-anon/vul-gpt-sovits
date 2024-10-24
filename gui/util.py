@@ -92,7 +92,7 @@ def ppp_parse(fname):
         ret['char'] = split[3]
         ret['emotion'] = split[4]
         ret['noise'] = split[5]
-        ret['transcr'] = os.path.splitext(split[6])[0]
+        ret['transcr'] = os.path.splitext(''.join(split[6:]))[0]
     except IndexError as e:
         return None
     return ret
