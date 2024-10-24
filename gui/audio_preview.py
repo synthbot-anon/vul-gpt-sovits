@@ -148,7 +148,11 @@ class SmallAudioPreviewWidget(QWidget):
         lay = QVBoxLayout(self)
         lay.addWidget(self.pb)
         self.pb.clicked.connect(self.toggle_play)
-        self.pb.mouseMoveEvent = self.drag_hook
+        self.pb.setFixedWidth(40)
+        self.pb.setFixedHeight(30)
+        self.pb.setSizePolicy(QSizePolicy.Minimum,
+            QSizePolicy.Minimum)
+        # self.pb.mouseMoveEvent = self.drag_hook
         self.local_file = local_file
         self.is_playing : bool = False
 
