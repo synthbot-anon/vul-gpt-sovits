@@ -8,6 +8,7 @@ class GPTSovitsCore(QObject):
     updateHost = pyqtSignal(str, bool)
     hostReady = pyqtSignal(bool)
     connectionBusy = pyqtSignal(bool)
+    newModelsAvailable = pyqtSignal()
 
     def __init__(self):
         super().__init__()

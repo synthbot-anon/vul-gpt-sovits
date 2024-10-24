@@ -57,7 +57,8 @@ class ModelSelection(QGroupBox):
             )
         )
         sync_button.setEnabled(False)
-        self.core.hostReady.connect(self.update_ready)
+        self.core.hostReady.connect(self.retrieve_models)
+        self.core.newModelsAvailable.connect(self.retrieve_models)
         synclay.addWidget(sync_button)
         self.sync_button = sync_button
         l1.addWidget(sync)

@@ -15,6 +15,7 @@ from peewee import *
 from gui.database import GPTSovitsDatabase, RefAudio, SERVER_DB_FILE
 from gui.util import (get_available_filename, sanitize_filename,
     base64_to_audio_file)
+import huggingface_hub
 
 # sys path
 now_dir = os.getcwd()
@@ -137,9 +138,36 @@ def post_ref_audio(info : UploadRefAudioInfo, response: Response):
     return
 
 
+class DownloadHfModelsInfo(BaseModel):
+    model_name : str
+    repo : str
+    gpt_path : str
+    sovits_path : str
+
 @app.post("/download_hf_models")
-def download_hf_models():
-    pass
+def download_hf_models(info : DownloadHfModelsInfo):
+    models_dir = Path(now_dir) / 'models'
+    model_dir : Path = models_dir / info.model_name
+    strmodel_dir = str(model_dir.absolute())
+    if not model_dir.exists():
+        os.makedirs(strmodel_dir)
+    try: 
+        huggingface_hub.hf_hub_download(
+            repo_id=info.repo,
+            filename=info.path,
+            local_path=os.path.join(strmodel_dir, 
+                os.path.basename(info.gpt_path))
+        )
+        huggingface_hub.hf_hub_download(
+            repo_id=info.repo,
+            filename=info.path,
+            local_path=os.path.join(strmodel_dir, 
+                os.path.basename(info.sovits_path))
+        )
+        return {}
+    except Exception as e:
+        return {'error': str(e)}
+
 
 
 @app.get("/db_path")

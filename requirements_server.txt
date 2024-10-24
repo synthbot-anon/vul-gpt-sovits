@@ -1,4 +1,5 @@
 uvicorn
+huggingface_hub
 httpx
 peewee
 av
