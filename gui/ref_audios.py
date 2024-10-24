@@ -1,13 +1,16 @@
 from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QTableWidget, QTableWidgetItem,
-    QHeaderView, QCheckBox, QPushButton)
+    QHeaderView, QCheckBox, QPushButton, QFrame, QHBoxLayout,
+    QLabel, QLineEdit, QComboBox)
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
 from gui.core import GPTSovitsCore
 from gui.database import GPTSovitsDatabase, CLIENT_DB_FILE, RefAudio
 from gui.util import ppp_parse, AUDIO_EXTENSIONS
 from gui.audio_preview import AudioPreviewWidget
+from gui.file_button import FileButton
 from pathlib import Path
 from functools import partial
+from typing import Optional
 import soundfile as sf
 import hashlib
 import os
@@ -23,10 +26,12 @@ class RefAudiosContext:
         cfg = self.core.cfg
         os.makedirs(cfg['ref_audios_dir'], exist_ok=True)
         ref_audios_dir = Path(cfg['ref_audios_dir'])
+        i = len(self)
         for path in ref_audios_dir.rglob('*'):
             if path.suffix.lower() in AUDIO_EXTENSIONS:
                 path = path.absolute()
-                self.add_ref_audio(path)
+                self.add_ref_audio(path, override_list_position=i)
+                i = i + 1
 
     def get_ref_audios(self):
         return self.database.list_ref_audio()
@@ -36,7 +41,8 @@ class RefAudiosContext:
     
     def add_ref_audio(
         self,
-        local_filepath: Path):
+        local_filepath: Path,
+        override_list_position: Optional[int] = None):
         assert local_filepath.exists()
         
         sha256_hash = hashlib.sha256()
@@ -52,6 +58,12 @@ class RefAudiosContext:
         if ppp_meta is not None:
             character = ppp_meta['char']
             utterance = ppp_meta['transcr']
+            
+        list_position = None
+        if override_list_position is not None:
+            list_position = list_position
+        else:
+            list_position = len(self)
                 
         # Append to end of list
         self.database.update_with_ref_audio(
@@ -59,7 +71,7 @@ class RefAudiosContext:
             local_filepath=str(local_filepath),
             character=character,
             utterance=utterance,
-            list_position=len(self))
+            list_position=list_position)
 
     def update_ref_audio(
         self,
@@ -90,22 +102,59 @@ class RefAudiosFrame(QGroupBox):
         self.table = None
         
         self.hashesCheckedSet : set[str] = set()
+        self.hashToPathMap = dict()
         
         self.shouldBuildTable.connect(self.build_table)
         
-        # pb = QPushButton("Rebuild table")
-        # pb.clicked.connect(self.shouldBuildTable)
-        # self.lay.addWidget(pb)
-
-        self.shouldBuildTable.emit()
+        #pb = QPushButton("Rebuild table")
+        #pb.clicked.connect(self.shouldBuildTable)
+        #self.lay.addWidget(pb)
         
-    def updateHashesCheckedSet(self, 
+        bf = QFrame()
+        bflay = QHBoxLayout(bf)
+
+        self.add_ref_button = FileButton(
+            label="Add reference audio",
+            dialog_filter = "All Audio Files (*.wav *.mp3 *.ogg *.flac *.aac)"
+        )
+        bflay.addWidget(self.add_ref_button)
+        self.add_ref_button.filesSelected.connect(
+            self.add_selected_ref_audios            
+        )
+        self.delete_button = QPushButton("Delete highlighted rows (n)")
+        bflay.addWidget(self.delete_button)
+        
+        bf2 = QFrame()
+        bflay = QHBoxLayout(bf2)
+        bflay.addWidget(QLabel("Filter by character"))
+        bflay.addWidget(QComboBox())
+        bflay.addWidget(QLabel("Filter by utterance"))
+        bflay.addWidget(QLineEdit())
+
+        tbf = QFrame()
+        self.tbflay = QVBoxLayout(tbf)
+        self.lay.addWidget(tbf)
+        self.lay.addWidget(bf)
+        self.lay.addWidget(bf2)
+
+        self.build_table()
+        
+    def update_hashes_set(self, 
         check_box: QCheckBox,
         audio_hash: str):
         if check_box.isChecked():
             self.hashesCheckedSet.add(audio_hash)
         else:
             self.hashesCheckedSet.remove(audio_hash)
+            
+    def add_selected_ref_audios(self, 
+        ras : list[str]):
+        if not len(ras):
+            return
+        for ra in ras:
+            ra : str
+            self.context.add_ref_audio(Path(ra))
+        self.shouldBuildTable.emit()
         
     def build_table(self):
         if isinstance(self.table, QTableWidget):
@@ -140,8 +189,12 @@ class RefAudiosFrame(QGroupBox):
             QHeaderView.Fixed)
 
         ras : list[RefAudio] = self.context.get_ref_audios()
-        ras.sort(key=lambda ra:
+        ras.sort(reverse=True, # So most recent files appear at top
+            key=lambda ra:
             (ra.list_position if ra.list_position is not None else 0))
+        self.hashToPathMap = {
+            ra.audio_hash : ra.local_filepath for ra in ras
+        }
         self.table.setRowCount(len(ras))
         for i,ra in enumerate(ras):
             ra : RefAudio
@@ -151,8 +204,10 @@ class RefAudiosFrame(QGroupBox):
                 i, 0, filepath_item)
             self.table.setItem(
                 i, 1, QTableWidgetItem(ra.character))
+            utterance_item = QTableWidgetItem(ra.utterance)
+            #utterance_item.stateChanged
             self.table.setItem(
-                i, 2, QTableWidgetItem(ra.utterance))
+                i, 2, utterance_item)
             hash_item = QTableWidgetItem(ra.audio_hash[:7])
             hash_item.setFlags(hash_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(
@@ -161,7 +216,7 @@ class RefAudiosFrame(QGroupBox):
             if ra.audio_hash in self.hashesCheckedSet:
                 check_box.setChecked(True)
             check_box.stateChanged.connect(
-                partial(self.updateHashesCheckedSet,
+                partial(self.update_hashes_set,
                 check_box = check_box,
                 audio_hash = ra.audio_hash)
             )
@@ -171,7 +226,7 @@ class RefAudiosFrame(QGroupBox):
             preview_button.from_file(ra.local_filepath)
             self.table.setCellWidget(i, 5, preview_button)
             
-        self.lay.addWidget(self.table)
+        self.tbflay.addWidget(self.table)
         
     # TODO: Manipulation buttons:
     # Add from file (drag and drop)
