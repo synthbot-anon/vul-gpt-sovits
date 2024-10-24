@@ -137,6 +137,11 @@ def post_ref_audio(info : UploadRefAudioInfo, response: Response):
     return
 
 
+@app.post("/download_hf_models")
+def download_hf_models():
+    pass
+
+
 @app.get("/db_path")
 def db_path():
     return Path(SERVER_DB_FILE).absolute()

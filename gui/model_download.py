@@ -24,6 +24,7 @@ class FetchModelsWorker(QRunnable):
 
 class ModelDownload(QDialog):
     updateRepo = pyqtSignal(dict)
+    modelsDownloaded = pyqtSignal()
     def __init__(self, core: GPTSovitsCore, parent=None):
         super().__init__(parent)
         l1 = QVBoxLayout()
@@ -60,7 +61,7 @@ class ModelDownload(QDialog):
             return
         self.models_cb.clear()
         for model_name,model_data in data.items():
-            self.models_cb.additem(model_name, userData = model_data)
+            self.models_cb.addItem(model_name, userData = model_data)
 
     def repo_edit_finished(self):
         text = self.hf_repo_edit.text().strip()
