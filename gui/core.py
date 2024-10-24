@@ -6,6 +6,7 @@ from omegaconf import OmegaConf
 class GPTSovitsCore(QObject):
     updateConnectionStatus = pyqtSignal(str)
     updateHost = pyqtSignal(str, bool)
+    hostReady = pyqtSignal(bool)
     connectionBusy = pyqtSignal(bool)
 
     def __init__(self):
@@ -18,10 +19,13 @@ class GPTSovitsCore(QObject):
     def try_connect(self,
         host : str):
         worker = GetConnectionWorker(host)
+        self.hostReady.emit(False)
         def lam1(h):
             self.host = h
             self.is_local = ('127.0.0.1' in h or 'localhost' in h)
             self.updateHost.emit(self.host, self.is_local)
+            if len(self.host):
+                self.hostReady.emit(True)
 
         worker.emitters.updateHost.connect(lam1)
         worker.emitters.updateStatus.connect(lambda status: 

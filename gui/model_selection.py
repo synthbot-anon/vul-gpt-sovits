@@ -1,9 +1,15 @@
 from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout, QHBoxLayout, 
-    QLabel, QComboBox, QFrame)
+    QLabel, QComboBox, QFrame, QPushButton, QStyle)
+from PyQt5.QtCore import (QObject, QRunnable, QThreadPool, pyqtSignal)
 from gui.core import GPTSovitsCore
 from gui.util import qshrink
+from gui.requests import GetWorker, PostWorker
+from typing import Optional
+from logging import error
+import httpx
 
 class ModelSelection(QGroupBox):
+    modelsReady = pyqtSignal(bool)
     def __init__(self, core: GPTSovitsCore):
         super().__init__(title="Model selection")
         self.core = core
@@ -18,6 +24,7 @@ class ModelSelection(QGroupBox):
         f1f = QFrame()
         f1l.addWidget(f1f)
         self.sovits_weights_lay = QVBoxLayout(f1f)
+        qshrink(self.sovits_weights_lay)
 
         f2 = QFrame()
         l1.addWidget(f2)
@@ -27,6 +34,7 @@ class ModelSelection(QGroupBox):
         f2f = QFrame()
         f2l.addWidget(f2f)
         self.gpt_weights_lay = QVBoxLayout(f2f)
+        qshrink(self.gpt_weights_lay)
 
         f3 = QFrame()
         l1.addWidget(f3)
@@ -36,24 +44,88 @@ class ModelSelection(QGroupBox):
         f3f = QFrame()
         f3l.addWidget(f3f)
         self.folder_weights_lay = QVBoxLayout(f3f)
-        self.update_with_models()
+        qshrink(self.folder_weights_lay)
 
-    def update_with_models(self):
-        if hasattr(self, 'sovits_weights_cb'):
-            self.sovits_weights_cb.deleteLater()
-            del self.sovits_weights_cb
-        if hasattr(self, 'gpt_weights_cb'):
-            self.gpt_weights_cb.deleteLater()
-            del self.gpt_weights_cb
-        if hasattr(self, 'folder_weights_cb'):
-            self.folder_weights_cb.deleteLater()
-            del self.folder_weights_cb
-        if self.core.host is None:
-            self.sovits_weights_cb = QComboBox()
-            self.sovits_weights_lay.addWidget(self.sovits_weights_cb)
+        sync = QFrame()
+        synclay = QHBoxLayout(sync)
+        sync_button = QPushButton("Sync available model list")
+        sync_button.setIcon(
+            self.style().standardIcon(
+                getattr(QStyle, 'SP_BrowserReload')
+            )
+        )
+        sync_button.setEnabled(False)
+        self.core.hostReady.connect(self.update_ready)
+        synclay.addWidget(sync_button)
+        self.sync_button = sync_button
+        l1.addWidget(sync)
 
-            self.gpt_weights_cb = QComboBox()
-            self.gpt_weights_lay.addWidget(self.gpt_weights_cb)
+        self.sovits_weights_cb = QComboBox()
+        self.sovits_weights_lay.addWidget(self.sovits_weights_cb)
+        self.gpt_weights_cb = QComboBox()
+        self.gpt_weights_lay.addWidget(self.gpt_weights_cb)
+        self.folder_weights_cb = QComboBox()
+        self.folder_weights_lay.addWidget(self.folder_weights_cb)
 
-            self.folder_weights_cb = QComboBox()
-            self.folder_weights_lay.addWidget(self.folder_weights_cb)
+        self.sovits_weights_cb.currentIndexChanged.connect(
+            lambda: self.set_models({
+                'sovits_path': self.sovits_weights_cb.currentText
+            })
+        )
+        self.gpt_weights_cb.currentIndexChanged.connect(
+            lambda: self.set_models({
+                'gpt_path': self.gpt_weights_cb.currentText
+            })
+        )
+        self.folder_weights_cb.currentIndexChanged.connect(
+            lambda: self.set_models({
+                'sovits_path': self.folder_weights_cb.currentData[
+                    'sovits_weight'],
+                'gpt_path': self.folder_weights_cb.currentData[
+                    'gpt_weight']
+            })
+        )
+
+        self.thread_pool = QThreadPool()
+        self.update_ui_with_models()
+
+    def update_ready(self, ready : bool):
+        self.sovits_weights_cb.setEnabled(ready)
+        self.gpt_weights_cb.setEnabled(ready)
+        self.folder_weights_cb.setEnabled(ready)
+        self.sync_button.setEnabled(ready)
+
+    def retrieve_models(self):
+        self.modelsReady.emit(False)
+        def lam1(data):
+            self.modelsReady.emit(True)
+            self.update_ui_with_models(data)
+        worker = GetWorker(host=self.core.host, route="/find_models")
+        worker.gotResult.connect(lam1)
+        self.thread_pool.start(worker)
+
+    def set_models(self, data : dict):
+        worker = PostWorker(host=self.core.host, route="/")
+        worker.gotResult.connect(self.update_ui_with_models)
+        self.thread_pool.start(worker)
+
+    def update_ui_with_models(self, data : Optional[dict] = None):
+        self.sovits_weights_cb.clear()
+        self.gpt_weights_cb.clear()
+        self.folder_weights_cb.clear()
+
+        loose_models : dict = data['loose_models']
+        sovits_loose : list = loose_models['sovits_weights']
+        gpt_loose : list = loose_models['gpt_weights']
+        folder_models : list = data['folder_models']
+        
+        for model_name in sovits_loose:
+            self.sovits_weights_cb.addItem(
+                text=model_name)
+        for model_name in gpt_loose:
+            self.gpt_weights_cb.addItem(
+                text=model_name)
+        for model_dict in folder_models:
+            model_name = model_dict['model_name']
+            self.folder_weights_cb.addItem(
+                text=model_name, data=model_dict)

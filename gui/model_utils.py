@@ -91,12 +91,14 @@ def find_models(
         if not (base_dir / root).exists():
             continue
         models = (base_dir / root).glob("*.pth")
+        models = [str(g.absolute()) for g in models]
         ret['loose_models']['sovits_weights'] : list
         ret['loose_models']['sovits_weights'].extend(models)
     for root in GPT_weight_root:
         if not (base_dir / root).exists():
             continue
         models = (base_dir / root).glob("*.ckpt")
+        models = [str(g.absolute()) for g in models]
         ret['loose_models']['gpt_weights'] : list
         ret['loose_models']['gpt_weights'].extend(models)
         
@@ -109,13 +111,16 @@ def find_models(
         model_name = d.name
         model_ret = {}
         SoVITS_weights = d.rglob('*.pth')
+        SoVITS_weights = [str(g.absolute()) for g in SoVITS_weights]
         if len(SoVITS_weights) < 1:
             warn(f"Could not find a SoVITS weight for model folder {str(d)}")
             continue
         GPT_weights = d.rglob('*.ckpt')
+        GPT_weights = [str(g.absolute()) for g in GPT_weights]
         if len(GPT_weights) < 1:
             warn(f"Could not find a GPT weight for model folder {str(d)}")
             continue
+        model_ret['model_name'] = model_name
         model_ret['sovits_weight'] = SoVITS_weights[0]
         model_ret['gpt_weight'] = GPT_weights[0]
     
