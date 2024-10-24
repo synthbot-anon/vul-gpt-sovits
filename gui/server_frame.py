@@ -7,6 +7,7 @@ from gui.util import qshrink
 class ServerFrame(QGroupBox):
     def __init__(self, core: GPTSovitsCore):
         super().__init__(title="Server")
+        self.setStyleSheet("QGroupBox { font: bold; }")
         
         l1 = QVBoxLayout(self)
         f1 = QFrame()

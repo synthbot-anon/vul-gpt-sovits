@@ -12,6 +12,7 @@ class ModelSelection(QGroupBox):
     modelsReady = pyqtSignal(bool)
     def __init__(self, core: GPTSovitsCore):
         super().__init__(title="Model selection")
+        self.setStyleSheet("QGroupBox { font: bold; }")
         self.core = core
         l1 = QVBoxLayout(self)
         qshrink(l1, 4)

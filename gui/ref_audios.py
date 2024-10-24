@@ -126,6 +126,7 @@ class RefAudiosFrame(QGroupBox):
     shouldBuildTable = pyqtSignal()
     def __init__(self, core : GPTSovitsCore):
         super().__init__(title="Reference Audios")
+        self.setStyleSheet("QGroupBox { font: bold; }")
         self.context = RefAudiosContext(core)
         self.lay = QVBoxLayout(self)
         self.table = None
