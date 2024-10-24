@@ -2,6 +2,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QFrame
 from gui.core import GPTSovitsCore
 from gui.server_frame import ServerFrame
+from gui.model_selection import ModelSelection
 from gui.ref_audios import RefAudiosFrame
 
 class CentralWidget(QFrame):
@@ -11,6 +12,8 @@ class CentralWidget(QFrame):
         l1 = QVBoxLayout(self)
         sf = ServerFrame(core)
         l1.addWidget(sf)
+        ms = ModelSelection(core)
+        l1.addWidget(ms)
         raf = RefAudiosFrame(core)
         l1.addWidget(raf)
 

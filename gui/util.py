@@ -96,3 +96,6 @@ def ppp_parse(fname):
     except IndexError as e:
         return None
     return ret
+
+def qshrink(x, margin=0):
+    x.setContentsMargins(margin,margin,margin,margin)
