@@ -188,6 +188,9 @@ class RefAudiosFrame(QGroupBox):
         self.lay.addWidget(bf2)
         self.lay.addWidget(bf3)
 
+        self.sumdur = QLabel("Sum of durations: 0.0")
+        self.lay.addWidget(self.sumdur)
+
         self.build_character_filter()
         self.build_table()
 
@@ -284,6 +287,20 @@ class RefAudiosFrame(QGroupBox):
         return [ra for ra in ras if all(
             emot in (ra.emotion.lower() if ra.emotion is not None else '')
             for emot in emotions)]
+    
+    def update_hashes_checked(self):
+        ra : RefAudio
+        checkedAudio = [
+            ra for ra in self.ras if ra.audio_hash in self.hashesCheckedSet]
+        sumdur = 0.0
+        for ra in checkedAudio:
+            sumdur += ra.duration
+        if sumdur < 3 or sumdur > 10:
+            text = f"Sum of durations: {sumdur:.2f} s (!) (< 3 or > 10)"
+            self.sumdur.setText(text)
+        else:
+            text = f"Sum of durations: {sumdur:.2f} s"
+            self.sumdur.setText(text)
         
     def build_table(self):
         ras : list[RefAudio] = self.context.get_ref_audios()
@@ -320,6 +337,7 @@ class RefAudiosFrame(QGroupBox):
         model = AudioTableModel(ras, self.hashesCheckedSet)
         model.dataHasChanged.connect(self.build_character_filter)
         self.table = AudioTableView(model, ras, self.hashesCheckedSet)
+        self.table.hashesCheckedChanged.connect(self.update_hashes_checked)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.table.setSelectionMode(QTableView.ExtendedSelection)
 

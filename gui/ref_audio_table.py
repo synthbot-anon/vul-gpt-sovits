@@ -121,6 +121,7 @@ class AudioTableModel(QAbstractTableModel):
 
 
 class AudioTableView(QTableView):
+    hashesCheckedChanged = pyqtSignal()
     def __init__(self, 
         model : AudioTableModel, 
         ras : list[RefAudio],
@@ -203,3 +204,4 @@ class AudioTableView(QTableView):
             self.hashesCheckedSet.add(audio_hash)
         else:
             self.hashesCheckedSet.discard(audio_hash)
+        self.hashesCheckedChanged.emit()
