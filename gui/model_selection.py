@@ -112,8 +112,12 @@ class ModelSelection(QGroupBox):
         self.thread_pool.start(worker)
 
     def set_models(self, data : dict):
+        self.modelsReady.emit(False)
+        def lam1(data):
+            self.modelsReady.emit(True)
+            self.update_ui_loaded_models(data)
         worker = PostWorker(host=self.core.host, route="/")
-        worker.gotResult.connect(self.update_ui_loaded_models)
+        worker.gotResult.connect(lam1)
         self.thread_pool.start(worker)
 
     def update_ui_loaded_models(self, data : dict):
