@@ -44,7 +44,32 @@ class AudioTableModel(QAbstractTableModel):
                 return ra.utterance
             if index.column() == AUDIOHASH_COL: # Audio hash (first 7 chars)
                 return ra.audio_hash[:7]
+        elif role == Qt.EditRole:
+            ra = self.ras[index.row()]
+            if index.column() == CHARACTER_COL: # Character
+                return ra.character
+            if index.column() == EMOTION_COL: # Emotion
+                return ra.emotion
+            if index.column() == UTTERANCE_COL: # Utterance
+                return ra.utterance
+        elif role == Qt.ToolTipRole:
+            ra = self.ras[index.row()]
+            if index.column() == AUDIOHASH_COL:
+                return ra.audio_hash
         return None
+
+    def event(self, event):
+        if event.type() == event.MouseMove:
+            index = self.indexAt(event.pos())
+            if index.isValid() and index.column() == AUDIOHASH_COL:
+                value = self.model().data(index, Qt.ToolTipRole)
+                if value:
+                    self.setToolTip(str(value))
+                else:
+                    self.setToolTip("")
+            else:
+                self.setToolTip("")
+        return super().event(event)
 
     def headerData(self, section, orientation, role):
         if role == Qt.DisplayRole:
