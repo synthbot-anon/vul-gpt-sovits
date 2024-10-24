@@ -1,8 +1,11 @@
-from PyQt5.QtCore import QAbstractTableModel, Qt, QModelIndex
-from PyQt5.QtWidgets import QTableView, QCheckBox
+from PyQt5.QtCore import (
+    QAbstractTableModel, Qt, QModelIndex, QThreadPool)
+from PyQt5.QtWidgets import QTableView, QCheckBox, QLabel
 from gui.database import RefAudio
-from gui.audio_preview import AudioPreviewWidget
+from gui.audio_preview import SmallAudioPreviewWidget
 from functools import partial
+from logging import debug
+import time
 
 class AudioTableModel(QAbstractTableModel):
     def __init__(self,
@@ -67,6 +70,7 @@ class AudioTableView(QTableView):
         self.visible_widgets = {}
 
         self.verticalScrollBar().valueChanged.connect(self.on_scroll)
+        self.thread_pool = QThreadPool()
         self.on_scroll()
 
     def create_custom_widgets(self, row):
@@ -81,12 +85,11 @@ class AudioTableView(QTableView):
         )
         self.setIndexWidget(self.model().index(row, 4), check_box)
 
-        preview_button = AudioPreviewWidget(button_only=True,
-            drag_enabled=False, pausable=False)
-        preview_button.from_file(ra.local_filepath)
-        self.setIndexWidget(self.model().index(row, 5), preview_button)
+        preview = SmallAudioPreviewWidget(
+            ra.local_filepath)
+        self.setIndexWidget(self.model().index(row, 5), preview)
 
-        self.visible_widgets[row] = (check_box, preview_button)
+        self.visible_widgets[row] = (check_box, preview)
 
     def remove_custom_widgets(self, row):
         if row in self.visible_widgets:

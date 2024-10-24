@@ -20,9 +20,9 @@ import hashlib
 import os
 import time
 
-logging.basicConfig(
-    level = logging.DEBUG
-)
+#logging.basicConfig(
+#    level = logging.DEBUG
+#)
 
 class RefAudiosContext:
     def __init__(self, core : GPTSovitsCore):

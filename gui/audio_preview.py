@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QWidget,
     QVBoxLayout, QLabel, QFrame, QHBoxLayout, QSlider, QSizePolicy,
     QStyle, QPushButton)
 from PyQt5.QtCore import (
-    QMimeData, QUrl, Qt, QByteArray, QBuffer
+    QMimeData, QUrl, Qt, QByteArray, QBuffer, QRunnable, QObject, pyqtSignal
 )
 from PyQt5.QtGui import (
     QDrag
@@ -10,6 +10,7 @@ from PyQt5.QtGui import (
 from PyQt5.QtMultimedia import (
    QMediaContent, QAudio, QAudioDeviceInfo, QMediaPlayer)
 import os
+import time
 
 class AudioPreviewWidget(QWidget):
     def __init__(self,
@@ -134,3 +135,57 @@ class AudioPreviewWidget(QWidget):
 
     def seek(self, position):
         self.player.setPosition(position)
+
+# Lighter weight version of the above:
+#   - only loads media player/media when play button is pressed
+#   - no pausing/resuming, just stopping
+class SmallAudioPreviewWidget(QWidget):
+    def __init__(self,
+        local_file : str):
+        super( ).__init__()
+        self.pb = QPushButton()
+        self.pb.setIcon(self.style().standardIcon(getattr(QStyle, 'SP_MediaPlay')))
+        lay = QVBoxLayout(self)
+        lay.addWidget(self.pb)
+        self.pb.clicked.connect(self.toggle_play)
+        self.pb.mouseMoveEvent = self.drag_hook
+        self.local_file = local_file
+        self.is_playing : bool = False
+
+    def stop(self):
+        if hasattr(self, 'player'):
+            self.player : QMediaPlayer
+            self.player.stop()
+            self.player.deleteLater()
+            del self.player
+        self.is_playing = False
+
+    def play(self):
+        self.is_playing = True
+        self.player = QMediaPlayer()
+        self.player.setMedia(QMediaContent(QUrl.fromLocalFile(
+            os.path.abspath(self.local_file))))
+        self.player.play()
+
+    def toggle_play(self):
+        if self.is_playing:
+            self.stop()
+            self.pb.setIcon(self.style().standardIcon(
+                getattr(QStyle, 'SP_MediaPlay')))
+        else: 
+            self.play()
+            self.pb.setIcon(self.style().standardIcon(
+                getattr(QStyle, 'SP_MediaPause')))
+
+    def drag_hook(self, e):
+        if e.buttons() != Qt.LeftButton:
+            return
+        if not len(self.local_file):
+            return
+
+        mime_data = QMimeData()
+        mime_data.setUrls([QUrl.fromLocalFile(
+            os.path.abspath(self.local_file))])
+        drag = QDrag(self)
+        drag.setMimeData(mime_data)
+        drag.exec_(Qt.CopyAction)
