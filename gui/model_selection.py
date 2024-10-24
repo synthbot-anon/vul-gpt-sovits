@@ -14,7 +14,7 @@ class ModelSelection(QGroupBox):
         super().__init__(title="Model selection")
         self.core = core
         l1 = QVBoxLayout(self)
-        qshrink(l1)
+        qshrink(l1, 4)
 
         f1 = QFrame()
         l1.addWidget(f1)
@@ -48,6 +48,7 @@ class ModelSelection(QGroupBox):
 
         sync = QFrame()
         synclay = QHBoxLayout(sync)
+        qshrink(synclay)
         sync_button = QPushButton("Sync available model list")
         sync_button.setIcon(
             self.style().standardIcon(
@@ -87,7 +88,13 @@ class ModelSelection(QGroupBox):
         )
 
         self.thread_pool = QThreadPool()
+        self.modelsReady.connect(
+            self.update_ready
+        )
+        self.models_label = QLabel("Models loaded: GPT (None), SOVITS (None)")
+        l1.addWidget(self.models_label)
         self.update_ui_with_models()
+
 
     def update_ready(self, ready : bool):
         self.sovits_weights_cb.setEnabled(ready)
@@ -106,8 +113,12 @@ class ModelSelection(QGroupBox):
 
     def set_models(self, data : dict):
         worker = PostWorker(host=self.core.host, route="/")
-        worker.gotResult.connect(self.update_ui_with_models)
+        worker.gotResult.connect(self.update_ui_loaded_models)
         self.thread_pool.start(worker)
+
+    def update_ui_loaded_models(self, data : dict):
+        self.models_label.setText(
+            f"Models loaded: GPT ({data['gpt_path']}), SOVITS ({data['sovits_path']})")
 
     def update_ui_with_models(self, data : Optional[dict] = None):
         self.sovits_weights_cb.clear()

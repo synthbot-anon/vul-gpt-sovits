@@ -178,6 +178,10 @@ def set_models(info: SetModelsInfo):
         os.environ['bert_path'] = info.bert_path
     tts_pipeline.init_t2s_weights(os.environ['gpt_path'])
     tts_pipeline.init_vits_weights(os.environ['sovits_path'])
+    return {
+        'gpt_path': tts_pipeline.configs.vits_weights_path,
+        'sovits_path': tts_pipeline.configs.t2s_weights_path
+    }
 
 
 class GenerateInfo(BaseModel):
