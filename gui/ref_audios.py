@@ -272,9 +272,12 @@ class RefAudiosFrame(QGroupBox):
     def filter_by_emotions(self,
         ras : list[RefAudio]):
         emotion_filter = self.emotion_edit.text()
+        if not len(emotion_filter):
+            return ras
         emotions = [s.strip().lower() for s in emotion_filter.split(',')]
         return [ra for ra in ras if all(
-            emot in ra.emotion.lower() for emot in emotions)]
+            emot in (ra.emotion.lower() if ra.emotion is not None else '')
+            for emot in emotions)]
         
     def build_table(self):
         ras : list[RefAudio] = self.context.get_ref_audios()
