@@ -14,6 +14,8 @@ from gui.util import qshrink
 from gui.audio_preview import RichAudioPreviewWidget
 from gui.database import RefAudio
 from gui.requests import PostWorker
+from pathlib import Path
+import soundfile as sf
 import httpx
 import base64
 import numpy as np
@@ -21,8 +23,9 @@ import json
 import sys
 
 class InferenceWorkerEmitter(QObject):
-    # Returns an index and a single audio array of int
-    inferenceOutput = pyqtSignal(int, list)
+    # Returns info, an index and a single audio array of int
+    inferenceOutput = pyqtSignal(dict, int, list)
+    sr = pyqtSignal(int)
     statusUpdate = pyqtSignal(str)
 
 class InferenceWorker(QRunnable):
@@ -96,7 +99,8 @@ class InferenceWorker(QRunnable):
                 segment: list(np.ndarray)
                 segment_audio : np.ndarray = np.concatenate(
                     segment, dtype=np.int16)
-                self.inferenceOutput.emit(
+                self.emitters.inferenceOutput.emit(
+                    self.info,
                     i,
                     segment_audio.tolist())
 
@@ -112,6 +116,8 @@ class InferenceWorker(QRunnable):
         audio = chunk['audio']
         audio : bytes = base64.b64decode(audio.encode('ascii'))
         audio_array : np.ndarray = np.frombuffer(audio, dtype=np.int16)
+        sr = chunk['sr']
+        self.emitters.sr.emit(sr)
 
         # Then this generation can be split into sentences
         if chunk['parallelized']:
@@ -125,7 +131,8 @@ class InferenceWorker(QRunnable):
                 start = end
             self.is_parallelized = True
         else:
-            self.inferenceOutput.emit(
+            self.emitters.inferenceOutput.emit(
+                self.info,
                 self.repetition_counter,
                 audio_array.tolist())
             self.repetition_counter += 1
@@ -428,8 +435,7 @@ class InferenceFrame(QGroupBox):
 
         self.preview_widgets = []
         self.thread_pool = QThreadPool()
-
-        self.build_preview_widgets()
+        self.sr = 0
 
     def set_text_split_by_code(self, code : str):
         if len(code) < 4:
@@ -437,25 +443,39 @@ class InferenceFrame(QGroupBox):
         c = int(code[3])
         self.text_split.setCurrentIndex(c)
 
-    def build_preview_widgets(self, n_generations: int =3):
-        self.preview_widgets : list
+    def clear_preview_widgets(self):
         for widg in self.preview_widgets:
             widg.deleteLater()
         self.preview_widgets.clear()
 
-        for n in range(n_generations):
-            preview_widget = RichAudioPreviewWidget()
-            preview_widget.from_file(r"C:\Users\vul\Downloads\gptsovits_bundle2\sovits5\rvc1.mp3")
-            self.gen_lay.addWidget(preview_widget)
-            self.preview_widgets.append(preview_widget)
-
     def warn(self, msg: str):
+        self.status_label.setText(msg)
         pass
 
     def interrupt(self):
         post_worker = PostWorker(
             self.core.host, '/stop', None)
         self.thread_pool.start(post_worker)
+
+    def handle_inference_output(self, info : dict, idx : int, audio : list):
+        # We don't expect these to be sent out of order, so we can
+        # ignore idx
+        sr = self.sr
+
+        # Write output to disk
+        utterance = info['text']
+        characters : str = info['characters']
+        output_fn = sanitize_filename(characters+utterance, max_length=50) + '.flac'
+        output_path = Path(self.core.cfg.outputs_dir) / output_fn
+        final_fn = get_available_filename(str(output_path))
+        sf.write(final_fn, audio, sr)
+
+        # create preview widget
+        preview_widget = RichAudioPreviewWidget()
+        preview_widget.from_file(final_fn)
+        audio = np.array(audio, dtype=np.int16)
+        self.gen_lay.addWidget(preview_widget)
+        self.preview_widgets.append(preview_widget)
 
     def generate(self):
         info = {
@@ -490,6 +510,8 @@ class InferenceFrame(QGroupBox):
             info['aux_ref_audio_hashes'] = hashes
             info['prompt_text'] = ' '.join([ra.utterance for ra in ras.values()])
 
+        info['characters'] = '_'.join([ra.character for ra in ras.values()])
+
         ra: RefAudio
         hash_to_path_map = {
             h: ra.local_filepath for h,ra in ras.items()
@@ -499,4 +521,8 @@ class InferenceFrame(QGroupBox):
             is_local=self.core.is_local,
             info=info,
             hash_to_path_map=hash_to_path_map)
+        worker.emitters.statusUpdate.connect(self.warn)
+        worker.emitters.inferenceOutput.connect(self.handle_inference_output)
+        worker.emitters.sr.connect(lambda sr: self.sr = sr)
+        self.clear_preview_widgets()
         self.thread_pool.start(worker)
