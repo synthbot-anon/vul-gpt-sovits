@@ -213,7 +213,7 @@ class WaveformDisplay(QFrame):
         self.duration = 0
         self.player = player
 
-    def load_waveform(self, audio_data, downsample_factor=8000):
+    def load_waveform(self, audio_data, downsample_factor=12000):
         samples, sample_rate = sf.read(BytesIO(audio_data))
         self.duration = len(samples) / sample_rate
 
