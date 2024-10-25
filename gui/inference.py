@@ -105,7 +105,7 @@ class InferenceFrame(QGroupBox):
         text_split_f_lay.addWidget(text_split)
         inputs_grid.addWidget(text_split_f, 3, 1)
         self.text_split = text_split
-        self.set_text_split_by_code('cut4')
+        self.set_text_split_by_code(cfg.text_split_method)
 
         def qresize(widg):
             widg.setFixedWidth(60)
