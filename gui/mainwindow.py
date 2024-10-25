@@ -1,23 +1,33 @@
 import sys
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QFrame, QToolBar, QAction)
+    QApplication, QMainWindow, QVBoxLayout, QFrame, QToolBar, QAction,
+    QHBoxLayout)
 from gui.core import GPTSovitsCore
 from gui.server_frame import ServerFrame
 from gui.model_selection import ModelSelection
 from gui.ref_audios import RefAudiosFrame
 from gui.model_download import ModelDownload
+from gui.inference import InferenceFrame
 
 class CentralWidget(QFrame):
     def __init__(self, core: GPTSovitsCore):
         super().__init__()
         self.core = core
-        l1 = QVBoxLayout(self)
+        l1 = QHBoxLayout(self)
+
+        lf = QFrame()
+        l2 = QVBoxLayout(lf)
         sf = ServerFrame(core)
-        l1.addWidget(sf)
+        l2.addWidget(sf)
         ms = ModelSelection(core)
-        l1.addWidget(ms)
+        l2.addWidget(ms)
         raf = RefAudiosFrame(core)
-        l1.addWidget(raf)
+        l2.addWidget(raf)
+
+        l1.addWidget(lf)
+
+        _if = InferenceFrame(core)
+        l1.addWidget(_if)
 
 class GPTSoVITSClient(QMainWindow):
     def __init__(self):
