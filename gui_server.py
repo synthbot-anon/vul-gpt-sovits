@@ -14,8 +14,10 @@ import uvicorn
 from peewee import *
 from gui.database import GPTSovitsDatabase, RefAudio, SERVER_DB_FILE
 from gui.util import (get_available_filename, sanitize_filename,
-    base64_to_audio_file)
+    base64_to_audio_file, ppp_parse)
+from pydub import AudioSegment
 import huggingface_hub
+import hashlib
 
 # sys path
 now_dir = os.getcwd()
@@ -70,6 +72,34 @@ tts_config, tts_pipeline = init_pipeline()
 database = GPTSovitsDatabase(db_file=SERVER_DB_FILE)
 LOCAL_REF_SOUNDS_FOLDER = 'ref_sounds/'
 os.makedirs(LOCAL_REF_SOUNDS_FOLDER, exist_ok=True)
+
+database.integrity_update()
+local_ref_audios = Path(LOCAL_REF_SOUNDS_FOLDER).rglob('*.ogg')
+for local_filepath in local_ref_audios:
+    sha256_hash = hashlib.sha256()
+    with open(local_filepath, 'rb') as audio_file:
+        audio_segment = AudioSegment.from_file(audio_file)
+        audio_file.seek(0)
+        for byte_block in iter(lambda: audio_file.read(4096), b""):
+            sha256_hash.update(byte_block)
+    duration_seconds = len(audio_segment) / 1000.0
+
+    ppp_meta = ppp_parse(str(local_filepath))
+    character = None 
+    utterance = None
+    emotion = None
+    if ppp_meta is not None:
+        character = ppp_meta['char']
+        utterance = ppp_meta['transcr']
+        emotion = ppp_meta['emotion']
+
+    database.update_with_ref_audio(
+        audio_hash=sha256_hash.hexdigest(),
+        local_filepath=str(local_filepath),
+        character=character,
+        utterance=utterance,
+        emotion=emotion,
+        duration=duration_seconds)
     
 from gui import model_utils
 @app.post("/find_models")
