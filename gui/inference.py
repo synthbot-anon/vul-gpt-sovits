@@ -523,6 +523,9 @@ class InferenceFrame(QGroupBox):
             hash_to_path_map=hash_to_path_map)
         worker.emitters.statusUpdate.connect(self.warn)
         worker.emitters.inferenceOutput.connect(self.handle_inference_output)
-        worker.emitters.sr.connect(lambda sr: self.sr = sr)
+        worker.emitters.sr.connect(self.set_sr)
         self.clear_preview_widgets()
         self.thread_pool.start(worker)
+
+    def set_sr(self, sr : int):
+        self.sr = sr
