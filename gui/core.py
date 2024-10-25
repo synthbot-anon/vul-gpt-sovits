@@ -1,8 +1,9 @@
 from PyQt5.QtCore import QObject, pyqtSignal, QThreadPool
 from gui.connection import GetConnectionWorker
-from gui.default_config import default_config
+from gui.default_config import default_config, DEFAULT_CONFIG_PATH
 from omegaconf import OmegaConf
 from gui.database import GPTSovitsDatabase, CLIENT_DB_FILE, RefAudio
+from pathlib import Path
 
 class GPTSovitsCore(QObject):
     updateConnectionStatus = pyqtSignal(str)
@@ -17,7 +18,12 @@ class GPTSovitsCore(QObject):
         self.host = None
         self.is_local : bool = False
         self.thread_pool = QThreadPool()
-        self.cfg = OmegaConf.create(default_config)
+        if not Path(DEFAULT_CONFIG_PATH).exists():
+            self.cfg = OmegaConf.create(default_config)
+        else:
+            self.cfg = OmegaConf.load(DEFAULT_CONFIG_PATH)
+        with open(DEFAULT_CONFIG_PATH, 'w') as f:
+            f.write(OmegaConf.to_yaml(self.cfg))
         self.database = GPTSovitsDatabase(db_file=CLIENT_DB_FILE)
         self.hashesSelectedSet = set()
         self.integrity_update()
