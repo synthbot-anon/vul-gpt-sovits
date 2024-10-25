@@ -1,3 +1,13 @@
+# What is this?
+Implements a server/client for GPT-SoVITS designed for more powerful inference.
+
+Features:
+- Reference audio management
+- Parallelized generation (only with split by English punctuation)
+- Rich audio preview with drag and drop
+
+---
+
 <div align="center">
 
 
