@@ -192,6 +192,8 @@ class RefAudiosFrame(QGroupBox):
         self.sumdur = QLabel("Sum of durations: 0.0")
         self.lay.addWidget(self.sumdur)
 
+        self.core.databaseSelfUpdate.connect(self.shouldBuildTable)
+
         self.build_character_filter()
         self.build_table()
 

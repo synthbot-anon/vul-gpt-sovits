@@ -240,9 +240,28 @@ def generate_wrapper(info: GenerateInfo):
     # This will be in -samples-
     info['send_sentence_lengths'] = sentence_lengths
 
-    # 1. Convert hashes to audio
+    # 0. Integrity update
+    database.integrity_update()
 
-    # Parallelize repetitions
+    # 1. Convert hashes to audio
+    if info['ref_audio_hash'] is not None:
+        ra = database.get_ref_audio(info['ref_audio_hash'])
+        if ra is None or not Path(ra.local_filepath).exists():
+            raise HTTPException(status_code=404,
+                detail=f"Ref audio not found on disk for hash: f{ra.audio_hash}")
+        info['ref_audio_path'] = ra.local_filepath
+    elif info['aux_ref_audio_hashes'] is not None:
+        hashes = info['aux_ref_audio_hashes']
+        ras : list[RefAudio] = [database.get_ref_audio(h) for h in hashes]
+        paths = []
+        for ra in ras:
+            if ra is None or not Path(ra.local_filepath).exists():
+                raise HTTPException(status_code=404,
+                    detail=f"Ref audio not found on disk for hash: f{ra.audio_hash}")
+            paths.append(ra.local_filepath)
+        info['aux_ref_audio_paths'] = paths
+
+    # 2. Parallelize repetitions if possible
     if info['text_split_method'] == 'cut4' and info['keep_random']:
         # Handle repetitions
         if info['n_repetitions'] is not None:

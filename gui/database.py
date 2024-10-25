@@ -4,6 +4,7 @@ CLIENT_DB_FILE = "gptsovits_client_data.db"
 
 from peewee import *
 from typing import Optional
+from pathlib import Path
 
 db = SqliteDatabase(None)
 
@@ -37,6 +38,17 @@ class GPTSovitsDatabase:
     def list_ref_audio(
         self):
         return [a for a in RefAudio.select()]
+
+    def integrity_update(self):
+        # Delete reference audio instances for which we cannot find the file
+        ras = self.list_ref_audio()
+        deleted = False
+        for ra in ras:
+            ra : RefAudio
+            if not ra.local_filepath or not Path(ra.local_filepath).exists():
+                ra.delete_instance()
+                deleted = True
+        return deleted
         
     def update_with_ref_audio(self,
         audio_hash: str,

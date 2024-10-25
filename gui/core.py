@@ -10,6 +10,7 @@ class GPTSovitsCore(QObject):
     hostReady = pyqtSignal(bool)
     connectionBusy = pyqtSignal(bool)
     newModelsAvailable = pyqtSignal()
+    databaseSelfUpdate = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -19,6 +20,11 @@ class GPTSovitsCore(QObject):
         self.cfg = OmegaConf.create(default_config)
         self.database = GPTSovitsDatabase(db_file=CLIENT_DB_FILE)
         self.hashesSelectedSet = set()
+        self.integrity_update()
+
+    def integrity_update(self):
+        if (self.database.integrity_update()):
+            self.databaseSelfUpdate.emit()
         
     def try_connect(self,
         host : str):
