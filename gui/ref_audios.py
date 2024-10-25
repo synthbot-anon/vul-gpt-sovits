@@ -146,7 +146,7 @@ class RefAudiosFrame(QGroupBox):
         qshrink(bflay)
 
         self.add_ref_button = FileButton(
-            label="Add reference audio",
+            label="Add reference audio (or drag here)",
             dialog_filter = "All Audio Files (*.wav *.mp3 *.ogg *.flac *.aac)"
         )
         bflay.addWidget(self.add_ref_button)

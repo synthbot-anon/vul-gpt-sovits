@@ -46,7 +46,7 @@ class GPTSoVITSClient(QMainWindow):
             dialog = ModelDownload(core=self.core, parent=self)
             dialog.exec_()
 
-        self.model_download = QAction("Add Model", self)
+        self.model_download = QAction("Add model to server", self)
         self.model_download.triggered.connect(model_dialog)
         self.toolbar.addAction(self.model_download)
         
