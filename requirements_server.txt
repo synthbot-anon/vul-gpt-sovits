@@ -1,5 +1,5 @@
 uvicorn
 huggingface_hub
-httpx
+fastapi[standard]
 peewee
 av

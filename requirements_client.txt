@@ -3,3 +3,5 @@ soundfile
 rapidfuzz
 pydub
 pyqtdarktheme
+numpy
+httpx
