@@ -257,6 +257,6 @@ class InferenceFrame(QGroupBox):
 
         for n in range(n_generations):
             preview_widget = RichAudioPreviewWidget()
-            #preview_widget.from_file(r"C:\Users\vul\Downloads\gptsovits_bundle2\sovits5\rvc1.mp3")
+            preview_widget.from_file(r"C:\Users\vul\Downloads\gptsovits_bundle2\sovits5\rvc1.mp3")
             self.gen_lay.addWidget(preview_widget)
             self.preview_widgets.append(preview_widget)

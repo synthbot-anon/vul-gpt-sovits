@@ -15,7 +15,7 @@ class ModelSelection(QGroupBox):
         self.setStyleSheet("QGroupBox { font: bold; }")
         self.core = core
         l1 = QVBoxLayout(self)
-        qshrink(l1, 4)
+        qshrink(l1, 8)
 
         f1 = QFrame()
         l1.addWidget(f1)

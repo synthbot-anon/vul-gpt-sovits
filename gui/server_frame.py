@@ -11,7 +11,7 @@ class ServerFrame(QGroupBox):
         
         l1 = QVBoxLayout(self)
         f1 = QFrame()
-        qshrink(l1, 4)
+        qshrink(l1, 8)
         l1.addWidget(f1)
         
         l2 = QHBoxLayout(f1)

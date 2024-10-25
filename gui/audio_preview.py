@@ -153,8 +153,8 @@ class SmallAudioPreviewWidget(QWidget):
         lay = QVBoxLayout(self)
         lay.addWidget(self.pb)
         self.pb.clicked.connect(self.toggle_play)
-        self.pb.setFixedWidth(40)
-        self.pb.setFixedHeight(30)
+        self.pb.setFixedWidth(30)
+        self.pb.setFixedHeight(20)
         self.pb.setSizePolicy(QSizePolicy.Minimum,
             QSizePolicy.Minimum)
         # self.pb.mouseMoveEvent = self.drag_hook
@@ -246,7 +246,7 @@ class WaveformDisplay(QFrame):
 
         painter = QPainter(self)
         painter.setPen(Qt.NoPen)  # No border for rectangles
-        painter.setBrush(QColor('blue'))  # Set brush color for waveform rectangles
+        painter.setBrush(QColor('green'))  # Set brush color for waveform rectangles
 
         pixel_spacing = 2  # Spacing between rectangles in pixels
         rect_width = (self.width() - pixel_spacing * (len(self.waveform) - 1)) / len(self.waveform)
