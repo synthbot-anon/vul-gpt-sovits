@@ -2,6 +2,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, QThreadPool
 from gui.connection import GetConnectionWorker
 from gui.default_config import default_config
 from omegaconf import OmegaConf
+from gui.database import GPTSovitsDatabase, CLIENT_DB_FILE, RefAudio
 
 class GPTSovitsCore(QObject):
     updateConnectionStatus = pyqtSignal(str)
@@ -16,6 +17,8 @@ class GPTSovitsCore(QObject):
         self.is_local : bool = False
         self.thread_pool = QThreadPool()
         self.cfg = OmegaConf.create(default_config)
+        self.database = GPTSovitsDatabase(db_file=CLIENT_DB_FILE)
+        self.hashesSelectedSet = set()
         
     def try_connect(self,
         host : str):

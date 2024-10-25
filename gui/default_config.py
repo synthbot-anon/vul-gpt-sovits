@@ -3,7 +3,6 @@ from omegaconf import OmegaConf
 default_config = {
     "ref_audios_dir": "ref_audios",
     "outputs_dir": "outputs",
-    "num_gens": 3,
     "inference": {
         "top_k": 5,
         "top_p": 1.0,
@@ -12,6 +11,7 @@ default_config = {
         "batch_size": 10, # A larger is typically not needed
         "speed_factor": 1.0,
         "fragment_interval": 0.3,
-        "repetition_penalty": 1.35
+        "repetition_penalty": 1.35,
+        "n_repetitions": 3
     }
 }

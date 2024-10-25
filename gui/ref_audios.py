@@ -30,7 +30,7 @@ from pydub import AudioSegment
 class RefAudiosContext:
     def __init__(self, core : GPTSovitsCore):
         self.core = core
-        self.database = GPTSovitsDatabase(db_file=CLIENT_DB_FILE)
+        self.database = core.database
         self.autoload_from_dir()
         
     def autoload_from_dir(self):
@@ -131,7 +131,7 @@ class RefAudiosFrame(QGroupBox):
         self.lay = QVBoxLayout(self)
         self.table = None
         
-        self.hashesCheckedSet : set[str] = set()
+        self.hashesCheckedSet : set[str] = core.hashesSelectedSet
         self.rowToHashMap = dict()
         self.hashToPathMap = dict()
         
@@ -241,14 +241,6 @@ class RefAudiosFrame(QGroupBox):
         selected_rows = {index.row() for index in selected_indexes}
         return selected_rows
         
-    def update_hashes_set(self, 
-        check_box: QCheckBox,
-        audio_hash: str):
-        if check_box.isChecked():
-            self.hashesCheckedSet.add(audio_hash)
-        else:
-            self.hashesCheckedSet.discard(audio_hash)
-            
     def add_selected_ref_audios(self, 
         ras : list[str]):
         if not len(ras):

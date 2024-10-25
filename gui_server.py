@@ -83,7 +83,6 @@ class UploadRefAudioInfo(BaseModel):
     audio_hash: str
     base64_audio_data: Optional[str] = None
     preferred_name: Optional[str] = None
-    utterance: Optional[str] = None
 
     local_filepath: Optional[str] = None
     # The client should only transmit local_filepath if it detects that it and
@@ -103,17 +102,10 @@ def post_ref_audio(info : UploadRefAudioInfo, response: Response):
 
     if info.base64_audio_data is None and not info.local_filepath:
         # If base64_audio_data is null and this is not a local file, 
-        # then we are updating, and the ref audio must already exist on disk.
-        ref_audio : Optional[RefAudio] = database.get_ref_audio(info.audio_hash)
-        if ref_audio is None or not Path(ref_audio.local_filepath):
-            raise HTTPException(status_code=404,
-                detail=f"Attempted to update ref audio not found on disk: "
-                    f"{ref_audio.local_filepath} ({ref_audio.audio_hash})")
-        
-        ref_audio.utterance = info.utterance
-        ref_audio.save()
-        response.status_code = 200
-        return
+        # This is an error.
+        raise HTTPException(status_code=404,
+            detail=f"Noop on ref audio not found on disk: "
+                f"{ref_audio.local_filepath} ({ref_audio.audio_hash})")
 
     if not info.local_filepath:
         # Then we need to interpret base64_audio_data and save to disk
@@ -230,29 +222,87 @@ class GenerateInfo(BaseModel):
     batch_size: int = 20
     speed_factor: float = 1.0
     split_bucket: bool = True # TODO What is this?
-    return_fragment: bool = False
+    return_fragment: bool = False # TODO What is this?
     fragment_interval: float = 0.3 # TODO What is this?
     seed: Optional[int] = None
     parallel_infer: bool = True # TODO What is this?
     repetition_penalty: float = 1.35
     keep_random: bool = True
+    n_repetitions: Optional[int] = None
 
-async def generate_wrapper(info: GenerateInfo):
-    seed = -1 if info.keep_random else seed
-    actual_seed = seed if seed not in [-1, "", None] else random.randrange(1 << 32)
-    for item in tts_pipeline.run(json.loads(info.json())):
-        sr, audio = item
-        chunk = {
-            'sr': sr,
-            'audio': base64.b64encode(audio).decode("ascii"),
-            'actual_seed': actual_seed
-        }
-        yield json.dumps(chunk) # What is "item" anyways?
+def generate_wrapper(info: GenerateInfo):
+    # seed = -1 if info.keep_random else seed
+    # actual_seed = seed if seed not in [-1, "", None] else random.randrange(1 << 32)
+    i = 0
+    info : dict = json.loads(info.json())
+    
+    sentence_lengths = []
+    # This will be in -samples-
+    info['send_sentence_lengths'] = sentence_lengths
+
+    # 1. Convert hashes to audio
+
+    # Parallelize repetitions
+    if info['text_split_method'] == 'cut4' and info['keep_random']:
+        # Handle repetitions
+        if info['n_repetitions'] is not None:
+            n_reps = info['n_repetitions']
+
+            # We need a reliable way to insert generation boundaries into the text.
+            # Unfortunately the only way to do this is with sentence boundaries:
+            if not info['text'].strip().endswith((
+                '!', '?', '…', ',', '.', '-'," ")):
+                info['text'] = info['text'].strip() + '.'
+            info['text'] = info['text'] * n_reps
+
+            old_sentence_lengths = 0
+            for item in tts_pipeline.run(info):
+                sr, audio = item
+                i += 1
+
+                this_gen_lengths = sentence_lengths[old_sentence_lengths:]
+                old_sentence_lengths = len(sentence_lengths)
+
+                chunk = {
+                    'sr': sr,
+                    'audio': base64.b64encode(audio).decode("ascii"),
+                    'this_gen_lengths': this_gen_lengths,
+                    'parallelized': True
+                }
+                yield json.dumps(chunk) + '\n'
+    else:
+        if info['n_repetitions'] is not None and info['n_repetitions'] != 1:
+            if info['text_split_method'] != 'cut4':
+                yield json.dumps(
+                    {"warning": f"Cannot parallelize n_repetitions generations with "
+                    f"cut method {info['text_split_method']}, using serial generation"}) + '\n'
+            if not info['keep_random']:
+                yield json.dumps({"warning": 
+                    f"Multiple non-random generations offers no benefit, inferring anyways"}) + '\n'
+
+        n_repetitions = 1
+        if info['n_repetitions'] is not None:
+            n_repetitions = info['n_repetitions']
+        out_sr : int = 0
+
+        # Non-parallelizable so no point in complicating things by returning fragments
+        info['return_fragment'] = False
+        audios = []
+        for i in range(n_repetitions):
+            for item in tts_pipeline.run(info):
+                sr, audio = item
+                yield json.dumps({
+                    'sr': sr,
+                    'audio': base64.b64encode(audio).decode("ascii"),
+                    'this_gen_lengths': None,
+                    'parallelized': False
+                }) + '\n'
+
         # "item" seems to be (sr, audio) : (int, np.ndarray), but we don't know what the dimension is
         # np.concatenate(audio, 0) implies that the result is 1-dimensionaly
         # What are these chunks anyways?
 
-@app.post("/generate")
+@app.get("/generate")
 async def tts_generate(info: GenerateInfo):
     return StreamingResponse(generate_wrapper(info=info))
 

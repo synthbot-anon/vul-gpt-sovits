@@ -9,7 +9,7 @@ now_dir = os.getcwd()
 sys.path.append(now_dir)
 import ffmpeg
 import os
-from typing import Generator, List, Tuple, Union
+from typing import Generator, List, Tuple, Union, Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -919,7 +919,8 @@ class TTS:
                                                     None, 
                                                     speed_factor, 
                                                     False,
-                                                    fragment_interval
+                                                    fragment_interval,
+                                                    info.get('send_sentence_lengths')
                                                     )
                 else:
                     audio.append(batch_audio_fragment)
@@ -975,7 +976,8 @@ class TTS:
                           batch_index_list:list=None, 
                           speed_factor:float=1.0, 
                           split_bucket:bool=True,
-                          fragment_interval:float=0.3
+                          fragment_interval:float=0.3,
+                          send_sentence_lengths:Optional[list] = None
                           )->Tuple[int, np.ndarray]:
         zero_wav = torch.zeros(
                         int(self.configs.sampling_rate * fragment_interval),
@@ -988,9 +990,11 @@ class TTS:
                 max_audio=torch.abs(audio_fragment).max()#简单防止16bit爆音
                 if max_audio>1: audio_fragment/=max_audio
                 audio_fragment:torch.Tensor = torch.cat([audio_fragment, zero_wav], dim=0)
+                if send_sentence_lengths is not None:
+                    send_sentence_lengths.append(
+                        audio_fragment.shape[0] + zero_wav.shape[0])
                 audio[i][j] = audio_fragment.cpu().numpy()
             
-        
         if split_bucket:
             audio = self.recovery_order(audio, batch_index_list)
         else:

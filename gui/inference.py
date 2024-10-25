@@ -3,9 +3,158 @@ from PyQt5.QtWidgets import (
     QPlainTextEdit, QVBoxLayout, QHBoxLayout, QComboBox,
     QGridLayout, QCheckBox, QScrollArea
 )
+from PyQt5.QtCore import (
+    pyqtSignal, QObject, QRunnable, QThreadPool
+)
+from PyQt5.QtGui import (
+    QIntValidator, QDoubleValidator
+)
 from gui.core import GPTSovitsCore
 from gui.util import qshrink
 from gui.audio_preview import RichAudioPreviewWidget
+from gui.database import RefAudio
+from gui.requests import PostWorker
+import httpx
+import base64
+import numpy as np
+import json
+import sys
+
+class InferenceWorkerEmitter(QObject):
+    # Returns an index and a single audio array of int
+    inferenceOutput = pyqtSignal(int, list)
+    statusUpdate = pyqtSignal(str)
+
+class InferenceWorker(QRunnable):
+    def __init__(self, 
+        host : str,
+        is_local : bool,
+        info : dict,
+        hash_to_path_map : dict):
+        self.info = info
+        self.host = host
+        self.hash_to_path_map = hash_to_path_map
+        self.emitters = InferenceWorkerEmitter()
+
+    def run(self):
+        info = self.info
+        # 1. Test server for reference audio hashes
+        url = f"{self.host}/test_hashes"
+
+        selected_hashes : list
+        if info.ref_audio_hash is not None:
+            selected_hashes = [info.ref_audio_hash]
+        else:
+            selected_hashes = info.aux_ref_audio_hashes
+        try:
+            response = httpx.get(url, data={'hashes': selected_hashes})
+            if response.status_code == 200:
+                self.emitters.statusUpdate.emit('Testing audio hashes')
+            else:
+                self.emitters.statusUpdate.emit(f'Failed test audio hashes, '
+                    f'{response.json()}')
+        except httpx.RequestError as e:
+            error(f"Error testing audio hashes: {e}")
+            raise
+        hashes_known : dict[str, bool] = response.json()
+        unknown_hashes = [k for k,v in hashes_known.items() if not v]
+
+        # 2. Upload reference audios it doesn't know about
+        for unknown_hash in unknown_hashes:
+            self.upload_from_hash(unknown_hash)
+
+        # 3. Send the inference request
+        chunks = []
+        self.sentences = []
+        self.repetitions = []
+        self.is_parallelized = False
+        self.repetition_ctr = 0
+        try:
+            infer_url = f"{self.host}/generate"
+            with httpx.stream("GET", infer_url, data=self.info, timeout=None) as r:
+                for line in r.aiter_lines():
+                    if not line.strip(): # skip empty lines
+                        continue
+                    chunk = json.loads(line)
+                    self.process_chunk(chunk) # will transmit non-parallelized
+        except httpx.RequestError as e:
+            error(f"Error inferring: {e}")
+            raise
+
+        # 4. (Transmitting parallel inference).         
+        # We count the number of individual sentences and divide it by
+        # n_repetitions, then split the list of output sentences
+        # into n_repetitions to get audio we can concatenate back into our
+        # final outputs.
+        if self.is_parallelized:
+            segment_size = len(self.sentences) // info['n_repetitions']
+            segments = [
+                self.sentences[i:i+segment_size] for i in range(
+                    0, len(self.sentences), segment_size)]
+            assert len(segments) == info['n_repetitions']
+            for i,segment in enumerate(segments):
+                segment: list(np.ndarray)
+                segment_audio : np.ndarray = np.concatenate(
+                    segment, dtype=np.int16)
+                self.inferenceOutput.emit(
+                    i,
+                    segment_audio.tolist())
+
+        # Since we control the gui_server source this shouldn't create 
+        # compatibility issues since there is no other way for this request
+        # to go through.
+
+    def process_chunk(self, chunk):
+        if 'warning' in chunk:
+            self.emitters.statusUpdate.emit(f'Warning: {chunk["warning"]}')
+            return # No-op
+
+        audio = chunk['audio']
+        audio : bytes = base64.b64decode(audio.encode('ascii'))
+        audio_array : np.ndarray = np.frombuffer(audio, dtype=np.int16)
+
+        # Then this generation can be split into sentences
+        if chunk['parallelized']:
+            # To construct the final output, we take each chunk and split it
+            # into its individual sentences using 'audio' and 'this_gen_lengths'.
+            sentence_lengths = chunk['this_gen_lengths']
+            start = 0
+            for length in sentence_lengths:
+                end = start + length
+                self.sentences.append(audio_array[start:end])
+                start = end
+            self.is_parallelized = True
+        else:
+            self.inferenceOutput.emit(
+                self.repetition_counter,
+                audio_array.tolist())
+            self.repetition_counter += 1
+
+
+    def upload_from_hash(self, hsh):
+        upload_url = f"{self.host}/post_ref_audio"
+        pth = self.hash_to_path_map[hsh]
+        with open(pth, 'rb') as f:
+            audio = f.read()
+        upload_data = {
+            'audio_hash': hsh,
+        }
+        if is_local:
+            upload_data['local_filepath'] = pth
+        else:
+            base64_audio_data = base64.b64encode(audio).decode("ascii")
+            upload_data['base64_audio_data'] = base64_audio_data
+        try:
+            self.emitters.statusUpdate.emit(f'Uploading {pth}')
+            response = httpx.post(upload_url, data=upload_data, timeout=None)
+            if response.status_code == 201:
+                self.emitters.statusUpdate.emit(f'Uploaded {pth}')
+            else:
+                self.emitters.statusUpdate.emit(f'Failed upload {pth}, '
+                    f'{response.json()}')
+        except httpx.RequestError as e:
+            error(f"Error uploading ref audio: {e}")
+            raise
 
 class InferenceFrame(QGroupBox):
     def __init__(self, core : GPTSovitsCore):
@@ -29,15 +178,13 @@ class InferenceFrame(QGroupBox):
         pelay.addWidget(self.prompt_edit)
 
 
-        # inputs_grid
+        # inputs grid
         inputs_f = QFrame()
         lay1.addWidget(inputs_f)
         inputs_grid = QGridLayout(inputs_f)
         qshrink(inputs_grid, 4)
 
-        # TODO validators for below
-
-        # input prompt language
+        # text_lang
         prompt_lang_f = QFrame()
         prompt_lang_f_lay = QHBoxLayout(prompt_lang_f)
         qshrink(prompt_lang_f_lay)
@@ -116,6 +263,8 @@ class InferenceFrame(QGroupBox):
         qshrink(topk_f_lay)
         topk_f_lay.addWidget(QLabel("Top k"))
         self.topk_f_edit = QLineEdit(str(cfg.top_k))
+        top_k_validator = QIntValidator(1, 100)
+        self.topk_f_edit.setValidator(top_k_validator)
         qresize(self.topk_f_edit)
         topk_f_lay.addWidget(self.topk_f_edit)
 
@@ -127,6 +276,8 @@ class InferenceFrame(QGroupBox):
         qshrink(topp_f_lay)
         topp_f_lay.addWidget(QLabel("Top p"))
         self.topp_f_edit = QLineEdit(str(cfg.top_p))
+        top_p_validator = QDoubleValidator(0, 1, 2)
+        self.topp_f_edit.setValidator(top_p_validator)
         qresize(self.topp_f_edit)
         topp_f_lay.addWidget(self.topp_f_edit)
 
@@ -138,6 +289,8 @@ class InferenceFrame(QGroupBox):
         qshrink(temp_f_lay)
         temp_f_lay.addWidget(QLabel("Temperature"))
         self.temp_f_edit = QLineEdit(str(cfg.temperature))
+        temp_f_validator = QDoubleValidator(0, 2, 2)
+        self.temp_f_edit.setValidator(temp_f_validator)
         qresize(self.temp_f_edit)
         temp_f_lay.addWidget(self.temp_f_edit)
 
@@ -149,6 +302,8 @@ class InferenceFrame(QGroupBox):
         qshrink(repp_f_lay)
         repp_f_lay.addWidget(QLabel("Repetition penalty"))
         self.repp_f_edit = QLineEdit(str(cfg.repetition_penalty))
+        repp_f_validator = QDoubleValidator(0.0, 2.0, 2)
+        self.repp_f_edit.setValidator(repp_f_validator)
         qresize(self.repp_f_edit)
         repp_f_lay.addWidget(self.repp_f_edit)
 
@@ -160,6 +315,8 @@ class InferenceFrame(QGroupBox):
         qshrink(bs_f_lay)
         bs_f_lay.addWidget(QLabel("Batch size"))
         self.bs_f_edit = QLineEdit(str(cfg.batch_size))
+        bs_f_validator = QIntValidator(1, 200)
+        self.bs_f_edit.setValidator(bs_f_validator)
         qresize(self.bs_f_edit)
         bs_f_lay.addWidget(self.bs_f_edit)
 
@@ -171,6 +328,8 @@ class InferenceFrame(QGroupBox):
         qshrink(send_f_lay)
         send_f_lay.addWidget(QLabel("Add pause (s)"))
         self.send_f_edit = QLineEdit(str(cfg.fragment_interval))
+        send_f_validator = QDoubleValidator(0.01, 1.0, 2)
+        self.send_f_edit.setValidator(send_f_validator)
         qresize(self.send_f_edit)
         send_f_lay.addWidget(self.send_f_edit)
 
@@ -182,6 +341,8 @@ class InferenceFrame(QGroupBox):
         qshrink(spd_f_lay)
         spd_f_lay.addWidget(QLabel("Speed factor"))
         self.spd_f_edit = QLineEdit(str(cfg.speed_factor))
+        spd_f_validator = QDoubleValidator(0.6, 1.65, 2)
+        self.spd_f_edit.setValidator(spd_f_validator)
         qresize(self.spd_f_edit)
         spd_f_lay.addWidget(self.spd_f_edit)
 
@@ -193,6 +354,8 @@ class InferenceFrame(QGroupBox):
         qshrink(sd_f_lay)
         sd_f_lay.addWidget(QLabel("Seed"))
         self.sd_f_edit = QLineEdit()
+        sd_f_validator = QIntValidator()
+        self.sd_f_edit.setValidator(sd_f_validator)
         qresize(self.sd_f_edit)
         sd_f_lay.addWidget(self.sd_f_edit)
 
@@ -223,7 +386,9 @@ class InferenceFrame(QGroupBox):
         nr_f_lay = QHBoxLayout(nr_f)
         qshrink(nr_f_lay)
         nr_f_lay.addWidget(QLabel("Repetitions"))
-        self.n_f_edit = QLineEdit()
+        self.n_f_edit = QLineEdit(str(cfg.n_repetitions))
+        n_f_validator = QIntValidator(1, 10)
+        self.n_f_edit.setValidator(n_f_validator)
         qresize(self.n_f_edit)
         nr_f_lay.addWidget(self.n_f_edit)
 
@@ -232,12 +397,25 @@ class InferenceFrame(QGroupBox):
         # generate
         self.gen_button = QPushButton("Generate")
         self.gen_button.setEnabled(False)
-        self.gen_button.setFixedHeight(60)
-        inputs_grid.addWidget(self.gen_button, 4, 0, 3, 2)
+        self.gen_button.clicked.connect(self.generate)
+        inputs_grid.addWidget(self.gen_button, 4, 0, 1, 1)
 
         self.core = core
         self.core.hostReady.connect(
             lambda ready: self.gen_button.setEnabled(ready))
+
+        # interrupt
+        self.interrupt_button = QPushButton("Interrupt")
+        self.interrupt_button.setEnabled(False)
+        self.interrupt_button.clicked.connect(self.interrupt)
+        inputs_grid.addWidget(self.interrupt_button, 4, 1, 1, 1)
+
+        self.core.hostReady.connect(
+            lambda ready: self.interrupt_button.setEnabled(ready))
+
+        # status
+        self.status_label = QLabel("Status")
+        inputs_grid.addWidget(self.status_label, 5, 0, 1, 2)
 
         # generations
         gen_box = QGroupBox("Generations")
@@ -249,6 +427,7 @@ class InferenceFrame(QGroupBox):
         lay1.addWidget(scroll)
 
         self.preview_widgets = []
+        self.thread_pool = QThreadPool()
 
         self.build_preview_widgets()
 
@@ -269,3 +448,55 @@ class InferenceFrame(QGroupBox):
             preview_widget.from_file(r"C:\Users\vul\Downloads\gptsovits_bundle2\sovits5\rvc1.mp3")
             self.gen_lay.addWidget(preview_widget)
             self.preview_widgets.append(preview_widget)
+
+    def warn(self, msg: str):
+        pass
+
+    def interrupt(self):
+        post_worker = PostWorker(
+            self.core.host, '/stop', None)
+        self.thread_pool.start(post_worker)
+
+    def generate(self):
+        info = {
+            'text': str(self.prompt_edit.plainText()),
+            'text_lang': prompt_lang.currentData(),
+            'prompt_lang': ref_lang.currentData(),
+            'top_k': int(self.topk_f_edit.text()),
+            'top_p': float(self.topp_f_edit.text()),
+            'temperature': float(self.temp_f_edit.text()),
+            'text_split_method': text_split.currentData(),
+            'batch_size': int(self.bs_f_edit.text()),
+            'speed_factor': float(self.spd_f_edit.text()),
+            'fragment_interval': int(self.send_f_edit.text()),
+            'repetition_penalty': float(self.repp_f_edit.text()),
+            'keep_random': kpr_cb.isChecked(),
+            'n_repetitions': int(self.n_f_edit.text())
+        }
+        hashes = [h for h in self.core.hashesSelectedSet]
+        hashes.sort()
+        ras : dict[RefAudio] = {h: self.core.database.get_ref_audio(h) for h in hashes}
+
+        if len(self.sd_f_edit.text()):
+            info['seed'] = int(self.sd_f_edit.text())
+
+        if len(hashes) == 1:
+            info['ref_audio_hash'] = hashes[0]
+            info['prompt_text'] = ras[hashes[0]].utterance
+        elif len(hashes) == 0:
+            if self.useref_cb.isChecked():
+                self.warn("Warning: use reference audio enabled but no reference provided")
+        else:
+            info['aux_ref_audio_hashes'] = hashes
+            info['prompt_text'] = ' '.join([ra.utterance for ra in ras.values()])
+
+        ra: RefAudio
+        hash_to_path_map = {
+            h: ra.local_filepath for h,ra in ras.items()
+        }
+        worker = InferenceWorker(
+            host=self.core.host,
+            is_local=self.core.is_local,
+            info=info,
+            hash_to_path_map=hash_to_path_map)
+        self.thread_pool.start(worker)
