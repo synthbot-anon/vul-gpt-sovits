@@ -49,7 +49,7 @@ class ModelDownload(QDialog):
         lcb.addWidget(self.models_cb)
 
         self.add_button = QPushButton("Add to server")
-        self.add_button.clicked.connect(request_add)
+        self.add_button.clicked.connect(self.request_add)
         self.add_button.setEnabled(False)
         lcb.addWidget(self.add_button)
 
@@ -60,6 +60,7 @@ class ModelDownload(QDialog):
         l1.addWidget(self.status)
         self.setLayout(l1)
 
+        self.core = core
         self.core.hostReady.connect(
             lambda ready: self.add_button.setEnabled(ready))
         self.modelsDownloaded.connect(self.core.newModelsAvailable)
