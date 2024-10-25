@@ -13,6 +13,8 @@ class InferenceFrame(QGroupBox):
         self.setStyleSheet("QGroupBox { font: bold; }")
         self.interactable_group = []
 
+        cfg = core.cfg['inference']
+
         lay1 = QVBoxLayout(self)
 
         # Reference audio selection is in the reference audio frame
@@ -98,11 +100,12 @@ class InferenceFrame(QGroupBox):
         text_split.addItem(
             "Batch by English punctuation", userData="cut4")
         text_split.addItem(
-            "Batch by all punctuation", userData="cut4")
+            "Batch by all punctuation", userData="cut5")
         text_split_f_lay.addWidget(QLabel("Text split"))
         text_split_f_lay.addWidget(text_split)
         inputs_grid.addWidget(text_split_f, 3, 1)
-        text_split.setCurrentIndex(4) # batch by eng punctuation
+        self.text_split = text_split
+        self.set_text_split_by_code('cut4')
 
         def qresize(widg):
             widg.setFixedWidth(60)
@@ -112,7 +115,7 @@ class InferenceFrame(QGroupBox):
         topk_f_lay = QHBoxLayout(topk_f)
         qshrink(topk_f_lay)
         topk_f_lay.addWidget(QLabel("Top k"))
-        self.topk_f_edit = QLineEdit()
+        self.topk_f_edit = QLineEdit(str(cfg.top_k))
         qresize(self.topk_f_edit)
         topk_f_lay.addWidget(self.topk_f_edit)
 
@@ -123,7 +126,7 @@ class InferenceFrame(QGroupBox):
         topp_f_lay = QHBoxLayout(topp_f)
         qshrink(topp_f_lay)
         topp_f_lay.addWidget(QLabel("Top p"))
-        self.topp_f_edit = QLineEdit()
+        self.topp_f_edit = QLineEdit(str(cfg.top_p))
         qresize(self.topp_f_edit)
         topp_f_lay.addWidget(self.topp_f_edit)
 
@@ -134,7 +137,7 @@ class InferenceFrame(QGroupBox):
         temp_f_lay = QHBoxLayout(temp_f)
         qshrink(temp_f_lay)
         temp_f_lay.addWidget(QLabel("Temperature"))
-        self.temp_f_edit = QLineEdit()
+        self.temp_f_edit = QLineEdit(str(cfg.temperature))
         qresize(self.temp_f_edit)
         temp_f_lay.addWidget(self.temp_f_edit)
 
@@ -145,7 +148,7 @@ class InferenceFrame(QGroupBox):
         repp_f_lay = QHBoxLayout(repp_f)
         qshrink(repp_f_lay)
         repp_f_lay.addWidget(QLabel("Repetition penalty"))
-        self.repp_f_edit = QLineEdit()
+        self.repp_f_edit = QLineEdit(str(cfg.repetition_penalty))
         qresize(self.repp_f_edit)
         repp_f_lay.addWidget(self.repp_f_edit)
 
@@ -156,7 +159,7 @@ class InferenceFrame(QGroupBox):
         bs_f_lay = QHBoxLayout(bs_f)
         qshrink(bs_f_lay)
         bs_f_lay.addWidget(QLabel("Batch size"))
-        self.bs_f_edit = QLineEdit()
+        self.bs_f_edit = QLineEdit(str(cfg.batch_size))
         qresize(self.bs_f_edit)
         bs_f_lay.addWidget(self.bs_f_edit)
 
@@ -167,7 +170,7 @@ class InferenceFrame(QGroupBox):
         send_f_lay = QHBoxLayout(send_f)
         qshrink(send_f_lay)
         send_f_lay.addWidget(QLabel("Add pause (s)"))
-        self.send_f_edit = QLineEdit()
+        self.send_f_edit = QLineEdit(str(cfg.fragment_interval))
         qresize(self.send_f_edit)
         send_f_lay.addWidget(self.send_f_edit)
 
@@ -178,7 +181,7 @@ class InferenceFrame(QGroupBox):
         spd_f_lay = QHBoxLayout(spd_f)
         qshrink(spd_f_lay)
         spd_f_lay.addWidget(QLabel("Speed factor"))
-        self.spd_f_edit = QLineEdit()
+        self.spd_f_edit = QLineEdit(str(cfg.speed_factor))
         qresize(self.spd_f_edit)
         spd_f_lay.addWidget(self.spd_f_edit)
 
@@ -206,14 +209,14 @@ class InferenceFrame(QGroupBox):
         inputs_grid.addWidget(kpr_f, 4, 2)
 
         # cache results
-        ch_f = QFrame()
-        ch_f_lay = QHBoxLayout(ch_f)
-        qshrink(ch_f_lay)
-        ch_f_lay.addWidget(QLabel("Cache results"))
-        self.ch_cb = QCheckBox()
-        ch_f_lay.addWidget(self.ch_cb)
+        # ch_f = QFrame()
+        # ch_f_lay = QHBoxLayout(ch_f)
+        # qshrink(ch_f_lay)
+        # ch_f_lay.addWidget(QLabel("Cache results"))
+        # self.ch_cb = QCheckBox()
+        # ch_f_lay.addWidget(self.ch_cb)
 
-        inputs_grid.addWidget(ch_f, 6, 2)
+        # inputs_grid.addWidget(ch_f, 6, 2)
 
         # n_reps
         nr_f = QFrame()
@@ -248,6 +251,12 @@ class InferenceFrame(QGroupBox):
         self.preview_widgets = []
 
         self.build_preview_widgets()
+
+    def set_text_split_by_code(self, code : str):
+        if len(code) < 4:
+            return
+        c = int(code[3])
+        self.text_split.setCurrentIndex(c)
 
     def build_preview_widgets(self, n_generations: int =3):
         self.preview_widgets : list
