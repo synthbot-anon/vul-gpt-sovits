@@ -45,10 +45,9 @@ class InferenceWorker(QRunnable):
         url = f"{self.host}/test_hashes"
 
         selected_hashes : list
-        if info.ref_audio_hash is not None:
-            selected_hashes = [info.ref_audio_hash]
-        else:
-            selected_hashes = info.aux_ref_audio_hashes
+        selected_hashes = [info.ref_audio_hash]
+        if info.aux_ref_audio_hashes is not None:
+            selected_hashes.extend(info.aux_ref_audio_hashes)
         try:
             response = httpx.get(url, data={'hashes': selected_hashes})
             if response.status_code == 200:
@@ -230,12 +229,15 @@ class InferenceFrame(QGroupBox):
         inputs_grid.addWidget(ref_lang_f, 1, 1)
 
         # use reference audio
+        # TODO - I'm not sure this parameter actually has any effect
         useref_f = QFrame()
         useref_f_lay = QHBoxLayout(useref_f)
         qshrink(useref_f_lay)
         inputs_grid.addWidget(useref_f, 2, 1)
         useref_f_lay.addWidget(QLabel("Use ref. audio"))
-        self.useref_cb = QCheckBox()
+        self.useref_cb = QCheckBox() 
+        self.useref_cb.setChecked(True)
+        self.useref_cb.setEnabled(False)
         useref_f_lay.addWidget(self.useref_cb)
 
         # text_split_method
@@ -493,29 +495,31 @@ class InferenceFrame(QGroupBox):
             'keep_random': kpr_cb.isChecked(),
             'n_repetitions': int(self.n_f_edit.text())
         }
-        hashes = [h for h in self.core.hashesSelectedSet]
-        hashes.sort()
-        ras : dict[RefAudio] = {h: self.core.database.get_ref_audio(h) for h in hashes}
+        if not len(self.core.primaryRefHash):
+            self.warn("Warning: A primary reference audio is required.")
+            return
 
+        primaryRefHash = list(self.core.primaryRefHash)[0]
+        aux_hashes = [h for h in self.core.hashesSelectedSet]
+        aux_hashes.sort()
+        ra : RefAudio = self.core.database.get_ref_audio(primaryRefHash)
+        aux_ras = {h: self.core.database.get_ref_audio(h) for h in aux_hashes}
+
+        info['ref_audio_hash'] = primaryRefHash
         if len(self.sd_f_edit.text()):
             info['seed'] = int(self.sd_f_edit.text())
 
-        if len(hashes) == 1:
-            info['ref_audio_hash'] = hashes[0]
-            info['prompt_text'] = ras[hashes[0]].utterance
-        elif len(hashes) == 0:
-            if self.useref_cb.isChecked():
-                self.warn("Warning: use reference audio enabled but no reference provided")
-        else:
+        if len(aux_hashes):
             info['aux_ref_audio_hashes'] = hashes
-            info['prompt_text'] = ' '.join([ra.utterance for ra in ras.values()])
 
-        info['characters'] = '_'.join([ra.character for ra in ras.values()])
+        info['prompt_text'] = ra.utterance
+        info['characters'] = ra.character
 
-        ra: RefAudio
+        r: RefAudio
         hash_to_path_map = {
-            h: ra.local_filepath for h,ra in ras.items()
+            h: r.local_filepath for h,r in ras.items()
         }
+        hash_to_path_map[primaryRefHash] = ra.local_filepath
         worker = InferenceWorker(
             host=self.core.host,
             is_local=self.core.is_local,

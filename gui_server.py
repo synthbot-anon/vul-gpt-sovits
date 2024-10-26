@@ -274,13 +274,13 @@ def generate_wrapper(info: GenerateInfo):
     database.integrity_update()
 
     # 1. Convert hashes to audio
-    if info['ref_audio_hash'] is not None:
-        ra = database.get_ref_audio(info['ref_audio_hash'])
-        if ra is None or not Path(ra.local_filepath).exists():
-            raise HTTPException(status_code=404,
-                detail=f"Ref audio not found on disk for hash: f{ra.audio_hash}")
-        info['ref_audio_path'] = ra.local_filepath
-    elif info['aux_ref_audio_hashes'] is not None:
+    ra = database.get_ref_audio(info['ref_audio_hash'])
+    if ra is None or not Path(ra.local_filepath).exists():
+        raise HTTPException(status_code=404,
+            detail=f"Ref audio not found on disk for hash: f{ra.audio_hash}")
+    info['ref_audio_path'] = ra.local_filepath
+
+    if info['aux_ref_audio_hashes'] is not None:
         hashes = info['aux_ref_audio_hashes']
         ras : list[RefAudio] = [database.get_ref_audio(h) for h in hashes]
         paths = []
