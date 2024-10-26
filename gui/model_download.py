@@ -7,7 +7,7 @@ from gui.model_utils import find_models_hf
 from gui.core import GPTSovitsCore
 from gui.requests import PostWorker
 from gui.stopwatch import Stopwatch
-from gui.utils import qshrink
+from gui.util import qshrink
 
 class FetchModelsWorkerEmitters(QObject):
     finished = pyqtSignal(dict)
