@@ -4,6 +4,7 @@ import httpx
 
 class GetWorkerEmitters(QObject):
     gotResult = pyqtSignal(dict)
+    error = pyqtSignal(dict)
 
 class GetWorker(QRunnable):
     def __init__(self, host : str, route : str = "/route"):
@@ -21,9 +22,11 @@ class GetWorker(QRunnable):
                 self.emitters.gotResult.emit(response.json())
         except httpx.RequestError as e:
             error(f"Error: {e}")
+            self.emitters.error.emit({'error': str(e)})
 
 class PostWorkerEmitters(QObject):
     gotResult = pyqtSignal(dict)
+    error = pyqtSignal(dict)
 
 class PostWorker(QRunnable):
     def __init__(self, host : str, route : str, data : dict):
@@ -41,4 +44,5 @@ class PostWorker(QRunnable):
                 if response.json() is not None:
                     self.emitters.gotResult.emit(response.json())
         except httpx.RequestError as e:
-            error(f"Error retrieving models: {e}")
+            error(f"Error: {e}")
+            self.emitters.error.emit({'error': str(e)})

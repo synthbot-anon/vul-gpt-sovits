@@ -48,7 +48,12 @@ class GPTSoVITSClient(QMainWindow):
 
         self.model_download = QAction("Add model to server", self)
         self.model_download.triggered.connect(model_dialog)
+        self.model_download.setEnabled(False)
         self.toolbar.addAction(self.model_download)
+
+        def update_host_ready(ready : bool):
+            self.model_download.setEnabled(ready)
+        self.core.hostReady.connect(update_host_ready)
         
         # Central widget
         self.central_widget = CentralWidget(self.core)

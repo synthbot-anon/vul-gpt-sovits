@@ -48,6 +48,8 @@ class ModelDownload(QDialog):
         lcb.addWidget(QLabel("Models: "))
         lcb.addWidget(self.models_cb)
 
+        self.core = core
+
         self.add_button = QPushButton("Add to server")
         self.add_button.clicked.connect(self.request_add)
         self.add_button.setEnabled(False)
@@ -61,13 +63,13 @@ class ModelDownload(QDialog):
         self.setLayout(l1)
 
         self.core = core
-        self.core.hostReady.connect(
-            lambda ready: self.add_button.setEnabled(ready))
         self.modelsDownloaded.connect(self.core.newModelsAvailable)
 
     def request_add(self):
         model_name : str = self.models_cb.currentText()
         data : dict = self.models_cb.currentData()
+        if self.models_cb.currentData() is None:
+            return
         self.status.setText(f"Requested download of {model_name}")
         worker : PostWorker = PostWorker(
             host=self.core.host,
@@ -79,7 +81,11 @@ class ModelDownload(QDialog):
                 'sovits_path': data['sovits_weight'],
             }
         )
-        worker.emitters.finished.connect(self.modelsDownloaded)
+        worker.emitters.gotResult.connect(self.modelsDownloaded)
+        def handle_error(ret):
+            if 'error' in ret:
+                self.status.setText(f"Error: {ret['error']}")
+        worker.emitters.gotResult.connect(handle_error)
         self.thread_pool.start(worker)
 
     def update_repo_data(self, data : dict):
@@ -90,11 +96,13 @@ class ModelDownload(QDialog):
         for model_name,model_data in data.items():
             model_data['repo'] = self.hf_repo_edit.text().strip()
             self.models_cb.addItem(model_name, userData = model_data)
+        self.add_button.setEnabled(True)
 
     def repo_edit_finished(self):
         text = self.hf_repo_edit.text().strip()
         if not len(text):
             return
+        self.add_button.setEnabled(False)
         worker = FetchModelsWorker(text)
         worker.emitters.finished.connect(self.update_repo_data)
         self.thread_pool.start(worker)

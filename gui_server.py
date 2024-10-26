@@ -173,18 +173,20 @@ def download_hf_models(info : DownloadHfModelsInfo):
     strmodel_dir = str(model_dir.absolute())
     if not model_dir.exists():
         os.makedirs(strmodel_dir)
+
+    print(f"Requested downloads of: {info}")
     try: 
         huggingface_hub.hf_hub_download(
             repo_id=info.repo,
-            filename=info.path,
-            local_path=os.path.join(strmodel_dir, 
-                os.path.basename(info.gpt_path))
+            filename=info.gpt_path,
+            local_dir=os.path.join(strmodel_dir)
+                #os.path.basename(info.gpt_path))
         )
         huggingface_hub.hf_hub_download(
             repo_id=info.repo,
-            filename=info.path,
-            local_path=os.path.join(strmodel_dir, 
-                os.path.basename(info.sovits_path))
+            filename=info.sovits_path,
+            local_dir=os.path.join(strmodel_dir)
+                #os.path.basename(info.sovits_path))
         )
         return {}
     except Exception as e:
@@ -383,4 +385,4 @@ if __name__ == '__main__':
         from pyngrok import ngrok
         public_url = ngrok.connect(port)
         print(f"ngrok tunnel opened at {public_url}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("gui_server:app", host="0.0.0.0", port=port, reload=True)

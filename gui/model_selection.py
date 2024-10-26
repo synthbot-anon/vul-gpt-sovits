@@ -132,6 +132,13 @@ class ModelSelection(QGroupBox):
             self.update_ui_with_models(data)
         worker = GetWorker(host=self.core.host, route="/find_models")
         worker.emitters.gotResult.connect(lam1)
+        def error_handler(data):
+            self.stopwatch.stop_reset_stopwatch()
+            self.models_label.setText(f"Error: {data['error']}")
+            # Enable another sync attempt
+            if self.core.host is not None:
+                self.sync_button.setEnabled(True)
+        worker.emitters.gotResult.connect(error_handler)
         self.thread_pool.start(worker)
 
     def set_models(self, data : dict):
@@ -147,6 +154,13 @@ class ModelSelection(QGroupBox):
             self.update_ui_loaded_models(data)
         worker = PostWorker(host=self.core.host, route="/set_models", data=data)
         worker.emitters.gotResult.connect(lam1)
+        def error_handler(data):
+            self.stopwatch.stop_reset_stopwatch()
+            self.models_label.setText(f"Error: {data['error']}")
+            # Enable more attempts
+            if self.core.host is not None:
+                self.sync_button.setEnabled(True)
+                self.load_button.setEnabled(True)
         self.thread_pool.start(worker)
 
     def update_ui_loaded_models(self, data : dict):
