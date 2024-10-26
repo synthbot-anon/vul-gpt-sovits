@@ -920,7 +920,7 @@ class TTS:
                                                     speed_factor, 
                                                     False,
                                                     fragment_interval,
-                                                    info.get('send_sentence_lengths')
+                                                    inputs.get('send_sentence_lengths')
                                                     )
                 else:
                     audio.append(batch_audio_fragment)
@@ -992,7 +992,7 @@ class TTS:
                 audio_fragment:torch.Tensor = torch.cat([audio_fragment, zero_wav], dim=0)
                 if send_sentence_lengths is not None:
                     send_sentence_lengths.append(
-                        audio_fragment.shape[0] + zero_wav.shape[0])
+                        audio_fragment.shape[0])
                 audio[i][j] = audio_fragment.cpu().numpy()
             
         if split_bucket:
