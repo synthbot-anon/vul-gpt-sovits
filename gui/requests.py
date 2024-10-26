@@ -1,4 +1,6 @@
 from PyQt5.QtCore import (QObject, QRunnable, pyqtSignal)
+from logging import error
+import httpx
 
 class GetWorkerEmitters(QObject):
     gotResult = pyqtSignal(dict)
@@ -18,7 +20,7 @@ class GetWorker(QRunnable):
             if response.status_code == 200:
                 self.emitters.gotResult.emit(response.json())
         except httpx.RequestError as e:
-            error(f"Error retrieving models: {e}")
+            error(f"Error: {e}")
 
 class PostWorkerEmitters(QObject):
     gotResult = pyqtSignal(dict)
@@ -34,7 +36,7 @@ class PostWorker(QRunnable):
     def run(self):
         url = f"{self.host}{self.route}"
         try:
-            response = httpx.post(url, self.data)
+            response = httpx.post(url, json=self.data)
             if response.status_code == 200:
                 self.emitters.gotResult.emit(response.json())
         except httpx.RequestError as e:

@@ -10,17 +10,19 @@ from PyQt5.QtGui import (
     QIntValidator, QDoubleValidator
 )
 from gui.core import GPTSovitsCore
-from gui.util import qshrink
+from gui.util import qshrink, sanitize_filename, get_available_filename
 from gui.audio_preview import RichAudioPreviewWidget
 from gui.database import RefAudio
 from gui.requests import PostWorker
 from pathlib import Path
+from logging import error
 import soundfile as sf
 import httpx
 import base64
 import numpy as np
 import json
 import sys
+import os
 
 class InferenceWorkerEmitter(QObject):
     # Returns info, an index and a single audio array of int
@@ -34,8 +36,10 @@ class InferenceWorker(QRunnable):
         is_local : bool,
         info : dict,
         hash_to_path_map : dict):
+        super().__init__()
         self.info = info
         self.host = host
+        self.is_local = is_local
         self.hash_to_path_map = hash_to_path_map
         self.emitters = InferenceWorkerEmitter()
 
@@ -45,16 +49,16 @@ class InferenceWorker(QRunnable):
         url = f"{self.host}/test_hashes"
 
         selected_hashes : list
-        selected_hashes = [info.ref_audio_hash]
-        if info.aux_ref_audio_hashes is not None:
-            selected_hashes.extend(info.aux_ref_audio_hashes)
+        selected_hashes = [info['ref_audio_hash']]
+        if info['aux_ref_audio_hashes'] is not None:
+            selected_hashes.extend(info['aux_ref_audio_hashes'])
         try:
-            response = httpx.get(url, data={'hashes': selected_hashes})
+            response = httpx.post(url, json={'hashes': selected_hashes})
             if response.status_code == 200:
                 self.emitters.statusUpdate.emit('Testing audio hashes')
             else:
-                self.emitters.statusUpdate.emit(f'Failed test audio hashes, '
-                    f'{response.json()}')
+                self.emitters.statusUpdate.emit(f'Failed test audio hashes')
+                    
         except httpx.RequestError as e:
             error(f"Error testing audio hashes: {e}")
             raise
@@ -73,35 +77,39 @@ class InferenceWorker(QRunnable):
         self.repetition_ctr = 0
         try:
             infer_url = f"{self.host}/generate"
-            with httpx.stream("GET", infer_url, data=self.info, timeout=None) as r:
-                for line in r.aiter_lines():
-                    if not line.strip(): # skip empty lines
+            with httpx.stream("POST", infer_url, json=self.info, timeout=None) as r:
+                for line in r.iter_lines():
+                    if line is None or not line.strip(): # skip empty lines
                         continue
                     chunk = json.loads(line)
                     self.process_chunk(chunk) # will transmit non-parallelized
         except httpx.RequestError as e:
-            error(f"Error inferring: {e}")
-            raise
+            self.emitters.statusUpdate.emit(str(e))
+            #error(f"Error inferring: {e}")
+            #raise
 
         # 4. (Transmitting parallel inference).         
         # We count the number of individual sentences and divide it by
         # n_repetitions, then split the list of output sentences
         # into n_repetitions to get audio we can concatenate back into our
         # final outputs.
-        if self.is_parallelized:
-            segment_size = len(self.sentences) // info['n_repetitions']
-            segments = [
-                self.sentences[i:i+segment_size] for i in range(
-                    0, len(self.sentences), segment_size)]
-            assert len(segments) == info['n_repetitions']
-            for i,segment in enumerate(segments):
-                segment: list(np.ndarray)
-                segment_audio : np.ndarray = np.concatenate(
-                    segment, dtype=np.int16)
-                self.emitters.inferenceOutput.emit(
-                    self.info,
-                    i,
-                    segment_audio.tolist())
+        try:
+            if self.is_parallelized:
+                segment_size = len(self.sentences) // info['n_repetitions']
+                segments = [
+                    self.sentences[i:i+segment_size] for i in range(
+                        0, len(self.sentences), segment_size)]
+                assert len(segments) == info['n_repetitions']
+                for i,segment in enumerate(segments):
+                    segment: list(np.ndarray)
+                    segment_audio : np.ndarray = np.concatenate(
+                        segment, dtype=np.int16)
+                    self.emitters.inferenceOutput.emit(
+                        self.info,
+                        i,
+                        segment_audio.tolist())
+        except Exception as e:
+            self.emitters.statusUpdate.emit(str(e))
 
         # Since we control the gui_server source this shouldn't create 
         # compatibility issues since there is no other way for this request
@@ -132,9 +140,9 @@ class InferenceWorker(QRunnable):
         else:
             self.emitters.inferenceOutput.emit(
                 self.info,
-                self.repetition_counter,
+                self.repetition_ctr,
                 audio_array.tolist())
-            self.repetition_counter += 1
+            self.repetition_ctr += 1
 
 
     def upload_from_hash(self, hsh):
@@ -145,19 +153,18 @@ class InferenceWorker(QRunnable):
         upload_data = {
             'audio_hash': hsh,
         }
-        if is_local:
+        if self.is_local:
             upload_data['local_filepath'] = pth
         else:
             base64_audio_data = base64.b64encode(audio).decode("ascii")
             upload_data['base64_audio_data'] = base64_audio_data
         try:
             self.emitters.statusUpdate.emit(f'Uploading {pth}')
-            response = httpx.post(upload_url, data=upload_data, timeout=None)
+            response = httpx.post(upload_url, json=upload_data, timeout=None)
             if response.status_code == 201:
                 self.emitters.statusUpdate.emit(f'Uploaded {pth}')
             else:
-                self.emitters.statusUpdate.emit(f'Failed upload {pth}, '
-                    f'{response.json()}')
+                self.emitters.statusUpdate.emit(f'Failed upload {pth}')
         except httpx.RequestError as e:
             error(f"Error uploading ref audio: {e}")
             raise
@@ -208,6 +215,7 @@ class InferenceFrame(QGroupBox):
         prompt_lang_f_lay.addWidget(QLabel("Prompt language"))
         prompt_lang_f_lay.addWidget(prompt_lang)
         inputs_grid.addWidget(prompt_lang_f, 0, 1)
+        self.prompt_lang = prompt_lang
 
         # prompt_lang
         ref_lang_f = QFrame()
@@ -227,6 +235,7 @@ class InferenceFrame(QGroupBox):
         ref_lang_f_lay.addWidget(QLabel("Ref. audio language"))
         ref_lang_f_lay.addWidget(ref_lang)
         inputs_grid.addWidget(ref_lang_f, 1, 1)
+        self.ref_lang = ref_lang
 
         # use reference audio
         # TODO - I'm not sure this parameter actually has any effect
@@ -376,6 +385,7 @@ class InferenceFrame(QGroupBox):
         qshrink(kpr_f_lay)
         kpr_f_lay.addWidget(QLabel("Use random"))
         self.kpr_cb = QCheckBox()
+        self.kpr_cb.setChecked(cfg.use_random)
         kpr_f_lay.addWidget(self.kpr_cb)
 
         inputs_grid.addWidget(kpr_f, 4, 2)
@@ -424,6 +434,7 @@ class InferenceFrame(QGroupBox):
 
         # status
         self.status_label = QLabel("Status")
+        self.status_label.setFixedWidth(400)
         inputs_grid.addWidget(self.status_label, 5, 0, 1, 2)
 
         # generations
@@ -467,32 +478,35 @@ class InferenceFrame(QGroupBox):
         # Write output to disk
         utterance = info['text']
         characters : str = info['characters']
-        output_fn = sanitize_filename(characters+utterance, max_length=50) + '.flac'
+        output_fn = sanitize_filename(
+            characters+'_'+utterance, max_length=50) + '.flac'
         output_path = Path(self.core.cfg.outputs_dir) / output_fn
         final_fn = get_available_filename(str(output_path))
+        if not Path(self.core.cfg.outputs_dir).exists():
+            os.makedirs(self.core.cfg.outputs_dir, exist_ok=True)
+        audio = np.array(audio, dtype=np.int16)
         sf.write(final_fn, audio, sr)
 
         # create preview widget
         preview_widget = RichAudioPreviewWidget()
         preview_widget.from_file(final_fn)
-        audio = np.array(audio, dtype=np.int16)
         self.gen_lay.addWidget(preview_widget)
         self.preview_widgets.append(preview_widget)
 
     def generate(self):
         info = {
-            'text': str(self.prompt_edit.plainText()),
-            'text_lang': prompt_lang.currentData(),
-            'prompt_lang': ref_lang.currentData(),
+            'text': str(self.prompt_edit.toPlainText()),
+            'text_lang': self.prompt_lang.currentData(),
+            'prompt_lang': self.ref_lang.currentData(),
             'top_k': int(self.topk_f_edit.text()),
             'top_p': float(self.topp_f_edit.text()),
             'temperature': float(self.temp_f_edit.text()),
-            'text_split_method': text_split.currentData(),
+            'text_split_method': self.text_split.currentData(),
             'batch_size': int(self.bs_f_edit.text()),
             'speed_factor': float(self.spd_f_edit.text()),
-            'fragment_interval': int(self.send_f_edit.text()),
+            'fragment_interval': float(self.send_f_edit.text()),
             'repetition_penalty': float(self.repp_f_edit.text()),
-            'keep_random': kpr_cb.isChecked(),
+            'keep_random': self.kpr_cb.isChecked(),
             'n_repetitions': int(self.n_f_edit.text())
         }
         if not len(self.core.primaryRefHash):
@@ -500,7 +514,7 @@ class InferenceFrame(QGroupBox):
             return
 
         primaryRefHash = list(self.core.primaryRefHash)[0]
-        aux_hashes = [h for h in self.core.hashesSelectedSet]
+        aux_hashes = [h for h in self.core.auxSelectedSet]
         aux_hashes.sort()
         ra : RefAudio = self.core.database.get_ref_audio(primaryRefHash)
         aux_ras = {h: self.core.database.get_ref_audio(h) for h in aux_hashes}
@@ -510,16 +524,17 @@ class InferenceFrame(QGroupBox):
             info['seed'] = int(self.sd_f_edit.text())
 
         if len(aux_hashes):
-            info['aux_ref_audio_hashes'] = hashes
+            info['aux_ref_audio_hashes'] = aux_hashes
 
         info['prompt_text'] = ra.utterance
         info['characters'] = ra.character
 
         r: RefAudio
         hash_to_path_map = {
-            h: r.local_filepath for h,r in ras.items()
+            h: r.local_filepath for h,r in aux_ras.items()
         }
         hash_to_path_map[primaryRefHash] = ra.local_filepath
+        self.warn("Sent generation request")
         worker = InferenceWorker(
             host=self.core.host,
             is_local=self.core.is_local,

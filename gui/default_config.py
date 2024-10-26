@@ -13,6 +13,7 @@ default_config = {
         "speed_factor": 1.0,
         "fragment_interval": 0.3,
         "repetition_penalty": 1.35,
+        'use_random': True,
         "n_repetitions": 3
     }
 }

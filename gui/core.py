@@ -36,11 +36,19 @@ class GPTSovitsCore(QObject):
         
     def try_connect(self,
         host : str):
+
+        host = host.replace('0.0.0.0','127.0.0.1')
+        if not host.startswith('http') or host.startswith('https'):
+            host = 'http://'+host
+        if host.endswith('/'):
+            host = host[:-1]
+
         worker = GetConnectionWorker(host)
         self.hostReady.emit(False)
         def lam1(h):
             self.host = h
-            self.is_local = ('127.0.0.1' in h or 'localhost' in h)
+            if h is not None:
+                self.is_local = ('127.0.0.1' in h or 'localhost' in h)
             self.updateHost.emit(self.host, self.is_local)
             if len(self.host):
                 self.hostReady.emit(True)

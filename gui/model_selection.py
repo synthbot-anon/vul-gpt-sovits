@@ -58,9 +58,12 @@ class ModelSelection(QGroupBox):
         )
         sync_button.setEnabled(False)
         self.core.hostReady.connect(self.retrieve_models)
-        self.core.newModelsAvailable.connect(self.retrieve_models)
+        self.core.newModelsAvailable.connect(
+            lambda: self.retrieve_models(True))
         synclay.addWidget(sync_button)
         self.sync_button = sync_button
+        self.sync_button.clicked.connect(
+            lambda: self.retrieve_models(True))
         l1.addWidget(sync)
 
         self.sovits_weights_cb = QComboBox()
@@ -72,19 +75,19 @@ class ModelSelection(QGroupBox):
 
         self.sovits_weights_cb.currentIndexChanged.connect(
             lambda: self.set_models({
-                'sovits_path': self.sovits_weights_cb.currentText
+                'sovits_path': self.sovits_weights_cb.currentText()
             })
         )
         self.gpt_weights_cb.currentIndexChanged.connect(
             lambda: self.set_models({
-                'gpt_path': self.gpt_weights_cb.currentText
+                'gpt_path': self.gpt_weights_cb.currentText()
             })
         )
         self.folder_weights_cb.currentIndexChanged.connect(
             lambda: self.set_models({
-                'sovits_path': self.folder_weights_cb.currentData[
+                'sovits_path': self.folder_weights_cb.currentData()[
                     'sovits_weight'],
-                'gpt_path': self.folder_weights_cb.currentData[
+                'gpt_path': self.folder_weights_cb.currentData()[
                     'gpt_weight']
             })
         )
@@ -104,13 +107,15 @@ class ModelSelection(QGroupBox):
         self.folder_weights_cb.setEnabled(ready)
         self.sync_button.setEnabled(ready)
 
-    def retrieve_models(self):
+    def retrieve_models(self, ready : bool = False):
+        if not ready:
+            return
         self.modelsReady.emit(False)
         def lam1(data):
             self.modelsReady.emit(True)
             self.update_ui_with_models(data)
         worker = GetWorker(host=self.core.host, route="/find_models")
-        worker.gotResult.connect(lam1)
+        worker.emitters.gotResult.connect(lam1)
         self.thread_pool.start(worker)
 
     def set_models(self, data : dict):
@@ -118,8 +123,9 @@ class ModelSelection(QGroupBox):
         def lam1(data):
             self.modelsReady.emit(True)
             self.update_ui_loaded_models(data)
-        worker = PostWorker(host=self.core.host, route="/")
-        worker.gotResult.connect(lam1)
+        print(data)
+        worker = PostWorker(host=self.core.host, route="/set_models", data=data)
+        worker.emitters.gotResult.connect(lam1)
         self.thread_pool.start(worker)
 
     def update_ui_loaded_models(self, data : dict):
@@ -141,11 +147,11 @@ class ModelSelection(QGroupBox):
         
         for model_name in sovits_loose:
             self.sovits_weights_cb.addItem(
-                text=model_name)
+                model_name)
         for model_name in gpt_loose:
             self.gpt_weights_cb.addItem(
-                text=model_name)
+                model_name)
         for model_dict in folder_models:
             model_name = model_dict['model_name']
             self.folder_weights_cb.addItem(
-                text=model_name, data=model_dict)
+                model_name, userData=model_dict)

@@ -88,7 +88,7 @@ class GPTSovitsDatabase:
                 list_position=list_position)
         return ref_audio
             
-    def test_hashes(hashes: list[str]):
+    def test_hashes(self, hashes: list[str]):
         r: RefAudio
         known_hashes = {r.audio_hash for r in self.list_ref_audio()}
         return {h: (h in known_hashes) for h in hashes}

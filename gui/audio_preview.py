@@ -212,13 +212,15 @@ class WaveformDisplay(QFrame):
         self.duration = 0
         self.player = player
 
-    def load_waveform(self, audio_data, downsample_factor=12000):
+    def load_waveform(self, audio_data, target_num_rects = 100):
         samples, sample_rate = sf.read(BytesIO(audio_data))
         self.duration = len(samples) / sample_rate
 
         # Convert to mono if stereo
         if len(samples.shape) > 1:
             samples = samples.mean(axis=1)
+
+        downsample_factor = len(samples) // target_num_rects
 
         # Downsample by taking min and max of each chunk
         downsampled_waveform = []

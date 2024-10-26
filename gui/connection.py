@@ -20,13 +20,6 @@ class GetConnectionWorker(QRunnable):
             f"Attempting to connect to {host}"
         )
         
-        host = host.replace(
-            "0.0.0.0",
-            "localhost"
-        )
-        if not host.startswith("http://") or host.startswith("https://"):
-            host = f"http://{host}"
-        
         head_url = f"{host}/test"
         try:
             response = httpx.head(head_url)

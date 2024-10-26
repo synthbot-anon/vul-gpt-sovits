@@ -102,7 +102,7 @@ for local_filepath in local_ref_audios:
         duration=duration_seconds)
     
 from gui import model_utils
-@app.post("/find_models")
+@app.get("/find_models")
 def find_models():
     return model_utils.find_models(
         Path(now_dir),
@@ -147,6 +147,7 @@ def post_ref_audio(info : UploadRefAudioInfo, response: Response):
             info.base64_audio_data,
             local_filepath)
     else:
+        local_filepath = info.local_filepath
         if not Path(info.local_filepath).exists():
             raise HTTPException(status_code=404,
                 detail=f"Specified local filepath {ref_audio.local_filepath} "
@@ -154,8 +155,7 @@ def post_ref_audio(info : UploadRefAudioInfo, response: Response):
 
     database.update_with_ref_audio(
         audio_hash=info.audio_hash,
-        local_filepath=local_filepath,
-        utterance=info.utterance)
+        local_filepath=local_filepath)
     response.status_code = 201
     return
 
@@ -209,7 +209,7 @@ def list_ref_audio():
 class TestHashesInfo(BaseModel):
     hashes: list[str] = []
 
-@app.get("/test_hashes")
+@app.post("/test_hashes")
 def test_hashes(info: TestHashesInfo):
     return database.test_hashes(info.hashes)
 
@@ -223,16 +223,19 @@ class SetModelsInfo(BaseModel):
 @app.post("/set_models")
 def set_models(info: SetModelsInfo):
     # Environment variables will be used for model setup
-    if (info.gpt_path is not None):
-        os.environ['gpt_path'] = info.gpt_path
-    if (info.sovits_path is not None):
-        os.environ['sovits_path'] = info.sovits_path
-    if (info.cnhubert_base_path is not None):
-        os.environ['cnhubert_base_path'] = info.cnhubert_base_path
-    if (info.bert_path is not None):
-        os.environ['bert_path'] = info.bert_path
-    tts_pipeline.init_t2s_weights(os.environ['gpt_path'])
-    tts_pipeline.init_vits_weights(os.environ['sovits_path'])
+    # if (info.gpt_path is not None):
+        # os.environ['gpt_path'] = info.gpt_path
+    # if (info.sovits_path is not None):
+        # os.environ['sovits_path'] = info.sovits_path
+    # if (info.cnhubert_base_path is not None):
+        # os.environ['cnhubert_base_path'] = info.cnhubert_base_path
+    # if (info.bert_path is not None):
+        # os.environ['bert_path'] = info.bert_path
+    tts_pipeline.init_t2s_weights(os.environ.get('gpt_path',
+        info.gpt_path))
+    tts_pipeline.init_vits_weights(os.environ.get('sovits_path',
+        info.sovits_path))
+    # I'm not sure these reflect the actual paths?
     return {
         'gpt_path': tts_pipeline.configs.vits_weights_path,
         'sovits_path': tts_pipeline.configs.t2s_weights_path
@@ -294,6 +297,7 @@ def generate_wrapper(info: GenerateInfo):
     # 2. Parallelize repetitions if possible
     if info['text_split_method'] == 'cut4' and info['keep_random']:
         # Handle repetitions
+        info['return_fragment'] = True
         if info['n_repetitions'] is not None:
             n_reps = info['n_repetitions']
 
@@ -302,12 +306,13 @@ def generate_wrapper(info: GenerateInfo):
             if not info['text'].strip().endswith((
                 '!', '?', '…', ',', '.', '-'," ")):
                 info['text'] = info['text'].strip() + '.'
-            info['text'] = info['text'] * n_reps
+            info['text'] = (info['text']+'\n') * n_reps
 
             old_sentence_lengths = 0
             for item in tts_pipeline.run(info):
                 sr, audio = item
                 i += 1
+                print('send sentence lengths: ',info['send_sentence_lengths'])
 
                 this_gen_lengths = sentence_lengths[old_sentence_lengths:]
                 old_sentence_lengths = len(sentence_lengths)
@@ -351,7 +356,7 @@ def generate_wrapper(info: GenerateInfo):
         # np.concatenate(audio, 0) implies that the result is 1-dimensionaly
         # What are these chunks anyways?
 
-@app.get("/generate")
+@app.post("/generate")
 async def tts_generate(info: GenerateInfo):
     return StreamingResponse(generate_wrapper(info=info))
 
