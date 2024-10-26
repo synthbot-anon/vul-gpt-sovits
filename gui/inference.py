@@ -385,7 +385,7 @@ class InferenceFrame(QGroupBox):
         kpr_f = QFrame()
         kpr_f_lay = QHBoxLayout(kpr_f)
         qshrink(kpr_f_lay)
-        kpr_f_lay.addWidget(QLabel("Use random"))
+        kpr_f_lay.addWidget(QLabel("Randomize seed"))
         self.kpr_cb = QCheckBox()
         self.kpr_cb.setChecked(cfg.use_random)
         kpr_f_lay.addWidget(self.kpr_cb)
