@@ -30,6 +30,7 @@ class InferenceWorkerEmitter(QObject):
     inferenceOutput = pyqtSignal(dict, int, list)
     sr = pyqtSignal(int)
     statusUpdate = pyqtSignal(str)
+    error = pyqtSignal()
 
 class InferenceWorker(QRunnable):
     def __init__(self, 
@@ -59,10 +60,14 @@ class InferenceWorker(QRunnable):
                 self.emitters.statusUpdate.emit('Testing audio hashes')
             else:
                 self.emitters.statusUpdate.emit(f'Failed test audio hashes')
-                    
+                self.emitters.error.emit()
+                return
         except httpx.RequestError as e:
             error(f"Error testing audio hashes: {e}")
-            raise
+            self.emitters.statusUpdate.emit(f'Error testing audio hashes: {e}')
+            self.emitters.error.emit()
+            return
+
         hashes_known : dict[str, bool] = response.json()
         unknown_hashes = [k for k,v in hashes_known.items() if not v]
         self.emitters.statusUpdate.emit('Finished testing audio hashes')
@@ -575,6 +580,11 @@ class InferenceFrame(QGroupBox):
         worker.emitters.statusUpdate.connect(self.warn)
         worker.emitters.inferenceOutput.connect(self.handle_inference_output)
         worker.emitters.sr.connect(self.set_sr)
+        def handle_error():
+            # Allow retries
+            self.stopwatch.stop_reset_stopwatch()
+            self.gen_button.setEnabled(True)
+        worker.emitters.error.connect(handle_error)
         self.clear_preview_widgets()
         self.thread_pool.start(worker)
 

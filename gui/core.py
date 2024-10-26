@@ -12,6 +12,7 @@ class GPTSovitsCore(QObject):
     hostReady = pyqtSignal(bool)
     modelsReady = pyqtSignal(bool)
     connectionBusy = pyqtSignal(bool)
+    connectionError = pyqtSignal()
     newModelsAvailable = pyqtSignal()
     databaseSelfUpdate = pyqtSignal()
 
@@ -60,5 +61,6 @@ class GPTSovitsCore(QObject):
         worker.emitters.updateStatus.connect(lambda status: 
         self.updateConnectionStatus.emit(status))
         worker.emitters.isBusy.connect(self.connectionBusy)
+        worker.emitters.error.connect(self.connectionError)
 
         self.thread_pool.start(worker)

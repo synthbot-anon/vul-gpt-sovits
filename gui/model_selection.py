@@ -85,6 +85,8 @@ class ModelSelection(QGroupBox):
 
         def update_other_cbs():
             data = self.folder_weights_cb.currentData()
+            if data is None:
+                return
             sovits_path = data['sovits_weight']
             gpt_path = data['gpt_weight']
             self.sovits_weights_cb.setCurrentText(sovits_path)
@@ -102,6 +104,7 @@ class ModelSelection(QGroupBox):
         mfl = QHBoxLayout(mf)
         qshrink(mfl)
         self.models_label = QLabel("Models loaded: GPT (None), SOVITS (None)")
+        self.models_label.setMaximumWidth(400)
         self.stopwatch = Stopwatch()
         mfl.addWidget(self.models_label)
         mfl.addWidget(self.stopwatch)
@@ -134,7 +137,8 @@ class ModelSelection(QGroupBox):
         worker.emitters.gotResult.connect(lam1)
         def error_handler(data):
             self.stopwatch.stop_reset_stopwatch()
-            self.models_label.setText(f"Error: {data['error']}")
+            if data.get('error'):
+                self.models_label.setText(f"Error: {data['error']}")
             # Enable another sync attempt
             if self.core.host is not None:
                 self.sync_button.setEnabled(True)
@@ -156,11 +160,13 @@ class ModelSelection(QGroupBox):
         worker.emitters.gotResult.connect(lam1)
         def error_handler(data):
             self.stopwatch.stop_reset_stopwatch()
-            self.models_label.setText(f"Error: {data['error']}")
+            if data.get('error'):
+                self.models_label.setText(f"Error: {data['error']}")
             # Enable more attempts
             if self.core.host is not None:
                 self.sync_button.setEnabled(True)
                 self.load_button.setEnabled(True)
+        worker.emitters.error.connect(error_handler)
         self.thread_pool.start(worker)
 
     def update_ui_loaded_models(self, data : dict):

@@ -52,6 +52,12 @@ class ServerFrame(QGroupBox):
                 self.stopwatch.stop_reset_stopwatch()
         core.hostReady.connect(update_stopwatch)
 
+        def error_handle():
+            # Allow retry
+            self.stopwatch.stop_reset_stopwatch()
+            self.pb.setEnabled(True)
+        core.connectionError.connect(error_handle)
+
         self.pb.clicked.connect(
             self.try_connect_cb)
         

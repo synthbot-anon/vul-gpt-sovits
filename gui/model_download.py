@@ -6,6 +6,8 @@ from PyQt5.QtCore import (Qt, QRunnable, QObject, pyqtSignal, QThreadPool)
 from gui.model_utils import find_models_hf
 from gui.core import GPTSovitsCore
 from gui.requests import PostWorker
+from gui.stopwatch import Stopwatch
+from gui.utils import qshrink
 
 class FetchModelsWorkerEmitters(QObject):
     finished = pyqtSignal(dict)
@@ -58,8 +60,15 @@ class ModelDownload(QDialog):
         l1.addWidget(cb_frame)
 
         self.thread_pool = QThreadPool()
+        sf = QFrame()
+        sf_l = QHBoxLayout(sf)
+        qshrink(sf_l)
         self.status = QLabel("Status")
-        l1.addWidget(self.status)
+        self.status.setMaximumWidth(300)
+        sf_l.addWidget(self.status)
+        self.stopwatch = Stopwatch()
+        sf_l.addWidget(self.stopwatch)
+        l1.addWidget(sf)
         self.setLayout(l1)
 
         self.core = core
@@ -71,6 +80,7 @@ class ModelDownload(QDialog):
         if self.models_cb.currentData() is None:
             return
         self.status.setText(f"Requested download of {model_name}")
+        self.stopwatch.start_stopwatch()
         worker : PostWorker = PostWorker(
             host=self.core.host,
             route='/download_hf_models',
@@ -82,15 +92,20 @@ class ModelDownload(QDialog):
             }
         )
         worker.emitters.gotResult.connect(self.modelsDownloaded)
-        def handle_error(ret):
-            if 'error' in ret:
-                self.status.setText(f"Error: {ret['error']}")
-        worker.emitters.gotResult.connect(handle_error)
+        worker.emitters.gotResult.connect(lambda:
+            self.stopwatch.stop_reset_stopwatch()
+        )
+        def handle_error(data):
+            self.stopwatch.stop_reset_stopwatch()
+            if 'error' in data:
+                self.status.setText(f"Error: {data['error']}")
+        worker.emitters.error.connect(handle_error)
         self.thread_pool.start(worker)
 
     def update_repo_data(self, data : dict):
         if 'error' in data:
             self.models_cb.clear()
+            self.status.setText(f"Error: {data['error']}")
             return
         self.models_cb.clear()
         for model_name,model_data in data.items():

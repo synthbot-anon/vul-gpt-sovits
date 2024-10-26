@@ -5,6 +5,7 @@ class GetConnectionWorkerEmitters(QObject):
     isBusy = pyqtSignal(bool)
     updateHost = pyqtSignal(str)
     updateStatus = pyqtSignal(str)
+    error = pyqtSignal()
 
 class GetConnectionWorker(QRunnable):
     def __init__(self, host : str):
@@ -33,10 +34,12 @@ class GetConnectionWorker(QRunnable):
                 self.emitters.updateStatus.emit(
                     f"Host connection failed with status {response.status_code}"
                 )
+                self.emitters.error.emit()
         except (httpx.RequestError, httpx.InvalidURL) as e:
             self.emitters.updateStatus.emit(
                 f"Error connecting: {e}"
             )
             self.host = None
+            self.emitters.error.emit()
         finally:
             self.emitters.isBusy.emit(False)

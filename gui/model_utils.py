@@ -123,6 +123,8 @@ def find_models(
         model_ret['model_name'] = model_name
         model_ret['sovits_weight'] = SoVITS_weights[0]
         model_ret['gpt_weight'] = GPT_weights[0]
+        ret['loose_models']['sovits_weights'].append(model_ret['sovits_weight'])
+        ret['loose_models']['gpt_weights'].append(model_ret['gpt_weight'])
         ret['folder_models'].append(model_ret)
     
     return ret

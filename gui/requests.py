@@ -43,6 +43,8 @@ class PostWorker(QRunnable):
             if response.status_code == 200:
                 if response.json() is not None:
                     self.emitters.gotResult.emit(response.json())
+            else:
+                self.emitters.error.emit({'error': f'status code {response.status_code}'})
         except httpx.RequestError as e:
             error(f"Error: {e}")
             self.emitters.error.emit({'error': str(e)})

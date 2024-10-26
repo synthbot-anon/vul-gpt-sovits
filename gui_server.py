@@ -385,4 +385,4 @@ if __name__ == '__main__':
         from pyngrok import ngrok
         public_url = ngrok.connect(port)
         print(f"ngrok tunnel opened at {public_url}")
-    uvicorn.run("gui_server:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("gui_server:app", host="0.0.0.0", port=port,)
