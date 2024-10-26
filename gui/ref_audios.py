@@ -160,6 +160,10 @@ class RefAudiosFrame(QGroupBox):
             self.delete_selected_rows
         )
         bflay.addWidget(self.delete_button)
+
+        self.deselect_button = QPushButton("Deselect all")
+        self.deselect_button.clicked.connect(self.deselect)
+        bflay.addWidget(self.deselect_button)
         
         bf2 = QFrame()
         bflay = QHBoxLayout(bf2)
@@ -184,18 +188,27 @@ class RefAudiosFrame(QGroupBox):
             self.shouldBuildTable)
         bf3lay.addWidget(self.utterance_edit)
 
+        bf4 = QFrame()
+        bf4lay = QHBoxLayout(bf4)
+        qshrink(bf4lay)
+
+        self.primary_display = QLabel("Primary selected audio: ")
+        self.primary_display.setFixedWidth(600)
+        bf4lay.addWidget(self.primary_display)
+        self.show_select = QCheckBox("Show only selected")
+        bf4lay.addWidget(self.show_select)
+        self.show_select.stateChanged.connect(self.shouldBuildTable)
+
         tbf = QFrame()
         self.tbflay = QVBoxLayout(tbf)
         self.lay.addWidget(tbf)
         self.lay.addWidget(bf)
         self.lay.addWidget(bf2)
         self.lay.addWidget(bf3)
+        self.lay.addWidget(bf4)
 
         self.sumdur = QLabel("Sum of durations: 0.0")
         #self.lay.addWidget(self.sumdur)
-        self.primary_display = QLabel("Primary selected audio: ")
-
-        # TODO: Show only selected
 
         core.databaseSelfUpdate.connect(self.shouldBuildTable)
 
@@ -239,6 +252,12 @@ class RefAudiosFrame(QGroupBox):
             ra.save()
         self.build_character_filter()
         self.shouldBuildTable.emit()
+
+    def deselect(self, b):
+        self.context.core.primaryRefHash.clear()
+        self.context.core.auxSelectedSet.clear()
+        self.shouldBuildTable.emit()
+        self.update_hashes_checked()
         
     def get_selected_rows(
         self):
@@ -290,6 +309,15 @@ class RefAudiosFrame(QGroupBox):
     
     def update_hashes_checked(self):
         ra : RefAudio
+        primaryRefAudio = [
+            ra for ra in self.ras if ra.audio_hash in self.primaryRefHash]
+        if len(primaryRefAudio):
+            self.primary_display.setText(
+                f"Primary selected audio: "
+                f"{primaryRefAudio[0].local_filepath}")
+        else:
+            self.primary_display.setText(
+                f"Primary selected audio: ")
         checkedAudio = [
             ra for ra in self.ras if ra.audio_hash in self.auxSelectedSet]
         sumdur = 0.0
@@ -307,6 +335,12 @@ class RefAudiosFrame(QGroupBox):
 
         # Filter deleted files
         ras = [ra for ra in ras if not ra.is_deleted]
+
+        # Check for selection if show only selected
+        if self.show_select.isChecked():
+            ras = [ra for ra in ras if ra.audio_hash 
+                in self.context.core.auxSelectedSet or
+                ra in self.context.core.primaryRefHash]
 
         # Apply text filter
         ras = self.fuzzy_utterance_filter(ras)

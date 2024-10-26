@@ -163,6 +163,7 @@ class AudioTableView(QTableView):
             elif ra.audio_hash not in self.primaryRefHash and state == True:
                 self.primaryRefHash.clear()
                 self.primaryRefHash.add(audio_hash)
+                self.hashesCheckedChanged.emit()
         radio_button.toggled.connect(partial(
             update_primary_hash, audio_hash = ra.audio_hash))
         self.setIndexWidget(self.model().index(row, PRIMARY_CHECKBOX_COL), radio_button)
