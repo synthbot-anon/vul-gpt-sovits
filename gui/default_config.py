@@ -14,6 +14,9 @@ default_config = {
         "fragment_interval": 0.3,
         "repetition_penalty": 1.35,
         'use_random': True,
-        "n_repetitions": 3
+        "n_repetitions": 3,
+        # OOMs are hard to recover from, so we set the batch size
+        # to a relatively low value
+        'max_batch_size': 20
     }
 }

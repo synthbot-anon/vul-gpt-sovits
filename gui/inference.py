@@ -342,7 +342,7 @@ class InferenceFrame(QGroupBox):
         qshrink(bs_f_lay)
         bs_f_lay.addWidget(QLabel("Batch size"))
         self.bs_f_edit = QLineEdit(str(cfg.batch_size))
-        bs_f_validator = QIntValidator(1, 200)
+        bs_f_validator = QIntValidator(1, cfg.max_batch_size)
         self.bs_f_edit.setValidator(bs_f_validator)
         qresize(self.bs_f_edit)
         bs_f_lay.addWidget(self.bs_f_edit)
@@ -395,6 +395,14 @@ class InferenceFrame(QGroupBox):
         kpr_f_lay.addWidget(QLabel("Randomize seed"))
         self.kpr_cb = QCheckBox()
         self.kpr_cb.setChecked(cfg.use_random)
+        def update_seed_field():
+            self.sd_f_edit.setEnabled(not self.kpr_cb.isChecked())
+        self.kpr_cb.stateChanged.connect(
+            update_seed_field
+            # If randomize seed is enabled, then the seed field
+            # should be disabled.
+        )
+        update_seed_field()
         kpr_f_lay.addWidget(self.kpr_cb)
 
         inputs_grid.addWidget(kpr_f, 4, 2)
