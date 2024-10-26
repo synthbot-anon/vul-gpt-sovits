@@ -89,7 +89,8 @@ class ModelDownload(QDialog):
                 'repo': data['repo'],
                 'gpt_path': data['gpt_weight'],
                 'sovits_path': data['sovits_weight'],
-            }
+            },
+            timeout=120.0 # Shouldn't take longer than 2mins
         )
         worker.emitters.gotResult.connect(self.modelsDownloaded)
         worker.emitters.gotResult.connect(lambda:

@@ -176,16 +176,17 @@ def download_hf_models(info : DownloadHfModelsInfo):
 
     print(f"Requested downloads of: {info}")
     try: 
+        # It replicates the directory structure
         huggingface_hub.hf_hub_download(
             repo_id=info.repo,
             filename=info.gpt_path,
-            local_dir=os.path.join(strmodel_dir)
+            local_dir=models_dir
                 #os.path.basename(info.gpt_path))
         )
         huggingface_hub.hf_hub_download(
             repo_id=info.repo,
             filename=info.sovits_path,
-            local_dir=os.path.join(strmodel_dir)
+            local_dir=models_dir
                 #os.path.basename(info.sovits_path))
         )
         return {}
