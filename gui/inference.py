@@ -52,7 +52,7 @@ class InferenceWorker(QRunnable):
 
         selected_hashes : list
         selected_hashes = [info['ref_audio_hash']]
-        if info['aux_ref_audio_hashes'] is not None:
+        if info.get('aux_ref_audio_hashes') is not None:
             selected_hashes.extend(info['aux_ref_audio_hashes'])
         try:
             response = httpx.post(url, json={'hashes': selected_hashes})
@@ -93,8 +93,8 @@ class InferenceWorker(QRunnable):
                     self.process_chunk(chunk) # will transmit non-parallelized
         except httpx.RequestError as e:
             self.emitters.statusUpdate.emit(str(e))
-            #error(f"Error inferring: {e}")
-            #raise
+            self.emitters.error.emit()
+            return
 
         # 4. (Transmitting parallel inference).         
         # We count the number of individual sentences and divide it by
@@ -118,6 +118,8 @@ class InferenceWorker(QRunnable):
                         segment_audio.tolist())
         except Exception as e:
             self.emitters.statusUpdate.emit(str(e))
+            self.emitters.error.emit()
+            return
 
         # Since we control the gui_server source this shouldn't create 
         # compatibility issues since there is no other way for this request
@@ -555,6 +557,10 @@ class InferenceFrame(QGroupBox):
         if not len(self.core.primaryRefHash):
             self.warn("Warning: A primary reference audio is required."
                 " Not inferring.")
+            return
+
+        if not len(self.prompt_edit.toPlainText()):
+            self.warn("Warning: Cannot infer an empty prompt.")
             return
 
         primaryRefHash = list(self.core.primaryRefHash)[0]
