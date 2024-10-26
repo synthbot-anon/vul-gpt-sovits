@@ -64,6 +64,7 @@ class InferenceWorker(QRunnable):
             raise
         hashes_known : dict[str, bool] = response.json()
         unknown_hashes = [k for k,v in hashes_known.items() if not v]
+        self.emitters.statusUpdate.emit('Finished testing audio hashes')
 
         # 2. Upload reference audios it doesn't know about
         for unknown_hash in unknown_hashes:
@@ -75,6 +76,7 @@ class InferenceWorker(QRunnable):
         self.repetitions = []
         self.is_parallelized = False
         self.repetition_ctr = 0
+        self.emitters.statusUpdate.emit('Beginning generation')
         try:
             infer_url = f"{self.host}/generate"
             with httpx.stream("POST", infer_url, json=self.info, timeout=None) as r:
@@ -512,7 +514,8 @@ class InferenceFrame(QGroupBox):
             'n_repetitions': int(self.n_f_edit.text())
         }
         if not len(self.core.primaryRefHash):
-            self.warn("Warning: A primary reference audio is required.")
+            self.warn("Warning: A primary reference audio is required."
+                " Not inferring.")
             return
 
         primaryRefHash = list(self.core.primaryRefHash)[0]

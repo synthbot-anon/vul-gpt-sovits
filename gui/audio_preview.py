@@ -5,7 +5,7 @@ from PyQt5.QtCore import (
     QMimeData, QUrl, Qt, QByteArray, QBuffer, QRunnable, QObject, pyqtSignal
 )
 from PyQt5.QtGui import (
-    QDrag, QPainter, QColor
+    QDrag, QPainter, QColor, QPixmap, QCursor
 )
 from PyQt5.QtMultimedia import (
    QMediaContent, QAudio, QAudioDeviceInfo, QMediaPlayer)
@@ -296,7 +296,6 @@ class RichAudioPreviewWidget(QWidget):
             QSizePolicy.Maximum
         )
         hlayout.addWidget(self.waveform_display)
-        #self.vlayout.addWidget(self.waveform_display)
 
         # Play button
         self.play_button = QPushButton()
@@ -313,6 +312,8 @@ class RichAudioPreviewWidget(QWidget):
         # Connections for slider and player
         self.player.positionChanged.connect(self.update_marker)
         self.player.stateChanged.connect(self.state_changed)
+
+        self.drag_pixmap = QPixmap("ts_cursor.png")
 
         if (drag_enabled):
             self.play_button.mouseMoveEvent = self.drag_hook
@@ -390,6 +391,11 @@ class RichAudioPreviewWidget(QWidget):
             os.path.abspath(self.local_file))])
         drag = QDrag(self)
         drag.setMimeData(mime_data)
+
+        # Without setting an explicit drag icon,
+        # the console will be flooded with QPixmap errors
+        drag.setPixmap(self.drag_pixmap)
+
         drag.exec_(Qt.CopyAction)
 
     def waveform_move_event(self, event):

@@ -33,7 +33,7 @@ class GetConnectionWorker(QRunnable):
                 self.emitters.updateStatus.emit(
                     f"Host connection failed with status {response.status_code}"
                 )
-        except httpx.RequestError as e:
+        except (httpx.RequestError, httpx.InvalidURL) as e:
             self.emitters.updateStatus.emit(
                 f"Error connecting: {e}"
             )
