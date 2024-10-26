@@ -112,14 +112,17 @@ class ModelSelection(QGroupBox):
         if not ready:
             return
         self.modelsReady.emit(False)
+        self.models_label.setText("Fetching available models from server...")
         def lam1(data):
             self.modelsReady.emit(True)
+            self.models_label.setText("Got available models")
             self.update_ui_with_models(data)
         worker = GetWorker(host=self.core.host, route="/find_models")
         worker.emitters.gotResult.connect(lam1)
         self.thread_pool.start(worker)
 
     def set_models(self, data : dict):
+        self.models_label.setText("Requesting model load...")
         self.modelsReady.emit(False)
         def lam1(data):
             self.modelsReady.emit(True)
