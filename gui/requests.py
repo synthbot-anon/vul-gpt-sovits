@@ -38,6 +38,7 @@ class PostWorker(QRunnable):
         try:
             response = httpx.post(url, json=self.data)
             if response.status_code == 200:
-                self.emitters.gotResult.emit(response.json())
+                if response.json() is not None:
+                    self.emitters.gotResult.emit(response.json())
         except httpx.RequestError as e:
             error(f"Error retrieving models: {e}")

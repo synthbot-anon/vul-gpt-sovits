@@ -10,6 +10,7 @@ class GPTSovitsCore(QObject):
     updateConnectionStatus = pyqtSignal(str)
     updateHost = pyqtSignal(str, bool)
     hostReady = pyqtSignal(bool)
+    modelsReady = pyqtSignal(bool)
     connectionBusy = pyqtSignal(bool)
     newModelsAvailable = pyqtSignal()
     databaseSelfUpdate = pyqtSignal()

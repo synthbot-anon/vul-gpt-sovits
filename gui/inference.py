@@ -420,8 +420,6 @@ class InferenceFrame(QGroupBox):
         inputs_grid.addWidget(self.gen_button, 4, 0, 1, 1)
 
         self.core = core
-        self.core.hostReady.connect(
-            lambda ready: self.gen_button.setEnabled(ready))
 
         # interrupt
         self.interrupt_button = QPushButton("Interrupt")
@@ -429,8 +427,8 @@ class InferenceFrame(QGroupBox):
         self.interrupt_button.clicked.connect(self.interrupt)
         inputs_grid.addWidget(self.interrupt_button, 4, 1, 1, 1)
 
-        self.core.hostReady.connect(
-            lambda ready: self.interrupt_button.setEnabled(ready))
+        self.core.hostReady.connect(self.set_ready)
+        self.core.modelsReady.connect(self.set_ready)
 
         # status
         self.status_label = QLabel("Status")
@@ -449,6 +447,10 @@ class InferenceFrame(QGroupBox):
         self.preview_widgets = []
         self.thread_pool = QThreadPool()
         self.sr = 0
+
+    def set_ready(self, ready : bool):
+        self.gen_button.setEnabled(ready)
+        self.interrupt_button.setEnabled(ready)
 
     def set_text_split_by_code(self, code : str):
         if len(code) < 4:
