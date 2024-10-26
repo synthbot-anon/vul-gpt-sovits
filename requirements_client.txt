@@ -1,7 +1,10 @@
-PyQt5
-soundfile
-rapidfuzz
-pydub
-pyqtdarktheme
-numpy
-httpx
+httpx==0.27.2
+huggingface_hub==0.24.6
+numpy==2.1.2
+omegaconf==2.2.0
+peewee==3.17.7
+pydub==0.25.1
+PyQt5==5.15.11
+rapidfuzz==3.5.2
+soundfile==0.12.1
+pyqtdarktheme==2.1.0
