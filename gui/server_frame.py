@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout,
     QPushButton)
 from gui.core import GPTSovitsCore
 from gui.util import qshrink
+from gui.stopwatch import Stopwatch
 
 class ServerFrame(QGroupBox):
     def __init__(self, core: GPTSovitsCore):
@@ -25,8 +26,14 @@ class ServerFrame(QGroupBox):
         self.pb = QPushButton("Connect")
         l2.addWidget(self.pb)
 
+        sf = QFrame()
+        sfl = QHBoxLayout(sf)
+        qshrink(sfl)
         self.status_label = QLabel("Connection status: N/A")
-        l1.addWidget(self.status_label)
+        self.stopwatch = Stopwatch()
+        sfl.addWidget(self.status_label)
+        sfl.addWidget(self.stopwatch)
+        l1.addWidget(sf)
         
         self.core = core
         core.updateConnectionStatus.connect(
@@ -35,9 +42,18 @@ class ServerFrame(QGroupBox):
         core.connectionBusy.connect(
             lambda busy: self.pb.setEnabled(not busy))
 
+        def update_stopwatch(ready: bool):
+            if not ready: # Starting connection
+                # Reset stopwatch
+                self.stopwatch.stop_reset_stopwatch()
+                self.stopwatch.start_stopwatch()
+            else:
+                # Stop stopwatch
+                self.stopwatch.stop_reset_stopwatch()
+        core.hostReady.connect(update_stopwatch)
+
         self.pb.clicked.connect(
             self.try_connect_cb)
-        #self.le.editingFinished.connect(self.edit_finished_cb)
         
     def try_connect_cb(self):
         self.core.try_connect(self.le.text())

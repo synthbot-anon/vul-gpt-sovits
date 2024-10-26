@@ -4,6 +4,7 @@ from PyQt5.QtCore import (QObject, QRunnable, QThreadPool, pyqtSignal)
 from gui.core import GPTSovitsCore
 from gui.util import qshrink
 from gui.requests import GetWorker, PostWorker
+from gui.stopwatch import Stopwatch
 from typing import Optional
 from logging import error
 import httpx
@@ -96,8 +97,15 @@ class ModelSelection(QGroupBox):
         self.modelsReady.connect(
             self.update_ready
         )
+        
+        mf = QFrame()
+        mfl = QHBoxLayout(mf)
+        qshrink(mfl)
         self.models_label = QLabel("Models loaded: GPT (None), SOVITS (None)")
-        l1.addWidget(self.models_label)
+        self.stopwatch = Stopwatch()
+        mfl.addWidget(self.models_label)
+        mfl.addWidget(self.stopwatch)
+        l1.addWidget(mf)
         self.update_ui_with_models()
 
 
@@ -113,9 +121,14 @@ class ModelSelection(QGroupBox):
             return
         self.modelsReady.emit(False)
         self.models_label.setText("Fetching available models from server...")
+        # Reset stopwatch
+        self.stopwatch.stop_reset_stopwatch()
+        self.stopwatch.start_stopwatch()
         def lam1(data):
             self.modelsReady.emit(True)
             self.models_label.setText("Got available models")
+            # Stop stopwatch
+            self.stopwatch.stop_reset_stopwatch()
             self.update_ui_with_models(data)
         worker = GetWorker(host=self.core.host, route="/find_models")
         worker.emitters.gotResult.connect(lam1)
@@ -124,8 +137,13 @@ class ModelSelection(QGroupBox):
     def set_models(self, data : dict):
         self.models_label.setText("Requesting model load...")
         self.modelsReady.emit(False)
+        # Reset stopwatch
+        self.stopwatch.stop_reset_stopwatch()
+        self.stopwatch.start_stopwatch()
         def lam1(data):
             self.modelsReady.emit(True)
+            # Stop stopwatch
+            self.stopwatch.stop_reset_stopwatch()
             self.update_ui_loaded_models(data)
         worker = PostWorker(host=self.core.host, route="/set_models", data=data)
         worker.emitters.gotResult.connect(lam1)

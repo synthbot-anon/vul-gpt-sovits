@@ -14,6 +14,7 @@ from gui.util import qshrink, sanitize_filename, get_available_filename
 from gui.audio_preview import RichAudioPreviewWidget
 from gui.database import RefAudio
 from gui.requests import PostWorker
+from gui.stopwatch import Stopwatch
 from pathlib import Path
 from logging import error
 import soundfile as sf
@@ -172,6 +173,7 @@ class InferenceWorker(QRunnable):
             raise
 
 class InferenceFrame(QGroupBox):
+    resultsReady = pyqtSignal(bool)
     def __init__(self, core : GPTSovitsCore):
         super().__init__(title="Inference")
         self.setStyleSheet("QGroupBox { font: bold; }")
@@ -431,11 +433,32 @@ class InferenceFrame(QGroupBox):
 
         self.core.hostReady.connect(self.set_ready)
         self.core.modelsReady.connect(self.set_ready)
+        
+        def generation_set_ready(ready: bool):
+            self.gen_button.setEnabled(ready)
+        self.resultsReady.connect(generation_set_ready)
 
         # status
+        stf = QFrame()
+        stl = QHBoxLayout(stf)
+        qshrink(stl)
         self.status_label = QLabel("Status")
         self.status_label.setFixedWidth(400)
-        inputs_grid.addWidget(self.status_label, 5, 0, 1, 2)
+        self.stopwatch = Stopwatch()
+        stl.addWidget(self.status_label)
+        stl.addWidget(self.stopwatch)
+
+        def update_stopwatch(ready: bool):
+            if not ready: # Starting connection
+                # Reset stopwatch
+                self.stopwatch.stop_reset_stopwatch()
+                self.stopwatch.start_stopwatch()
+            else:
+                # Stop stopwatch
+                self.stopwatch.stop_reset_stopwatch()
+        self.resultsReady.connect(update_stopwatch)
+
+        inputs_grid.addWidget(stf, 5, 0, 1, 2)
 
         # generations
         gen_box = QGroupBox("Generations")
@@ -497,6 +520,9 @@ class InferenceFrame(QGroupBox):
         self.gen_lay.addWidget(preview_widget)
         self.preview_widgets.append(preview_widget)
 
+        if idx >= (info['n_repetitions'] - 1):
+            self.resultsReady.emit(True)
+
     def generate(self):
         info = {
             'text': str(self.prompt_edit.toPlainText()),
@@ -540,6 +566,7 @@ class InferenceFrame(QGroupBox):
         }
         hash_to_path_map[primaryRefHash] = ra.local_filepath
         self.warn("Sent generation request")
+        self.resultsReady.emit(False)
         worker = InferenceWorker(
             host=self.core.host,
             is_local=self.core.is_local,
