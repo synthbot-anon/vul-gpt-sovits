@@ -39,6 +39,8 @@ class GPTSovitsCore(QObject):
         host : str):
 
         host = host.replace('0.0.0.0','127.0.0.1')
+        # Localhost name resolution on Windows is slow
+        host = host.replace('localhost','127.0.0.1')
         if not host.startswith('http') or host.startswith('https'):
             host = 'http://'+host
         if host.endswith('/'):
