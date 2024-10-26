@@ -2,7 +2,7 @@ from PyQt5.QtCore import (
     QAbstractTableModel, Qt, QModelIndex, QThreadPool, pyqtSignal)
 from PyQt5.QtWidgets import (
     QTableView, QCheckBox, QLabel, QStyledItemDelegate, QWidget,
-    QAbstractItemDelegate, )
+    QAbstractItemDelegate, QRadioButton)
 from gui.database import RefAudio
 from gui.audio_preview import SmallAudioPreviewWidget
 from functools import partial
@@ -15,8 +15,9 @@ EMOTION_COL = 2
 DURATION_COL = 3
 UTTERANCE_COL = 4
 AUDIOHASH_COL = 5
-CHECKBOX_COL = 6
-PREVIEW_COL = 7
+PRIMARY_CHECKBOX_COL = 6
+AUX_CHECKBOX_COL = 7
+PREVIEW_COL = 8
 
 class CustomDelegate(QStyledItemDelegate):
     # Signal to notify when editing is finished
@@ -30,13 +31,11 @@ class CustomDelegate(QStyledItemDelegate):
 class AudioTableModel(QAbstractTableModel):
     dataHasChanged = pyqtSignal()
     def __init__(self,
-        ras : list[RefAudio],
-        hashesCheckedSet : set[str]):
+        ras : list[RefAudio]):
         super().__init__()
         self.ras = ras
-        self.hashesCheckedSet = hashesCheckedSet
-        self.headers = ['Filepath', 'Character', 'Emotion', 'Duration', 'Utterance', 'Hash', 'Select',
-            'Play']
+        self.headers = ['Filepath', 'Character', 'Emotion', 'Duration',
+            'Utterance', 'Hash', 'Primary', 'Aux', 'Play']
 
     def rowCount(self, parent=None):
         return len(self.ras)
@@ -114,7 +113,7 @@ class AudioTableModel(QAbstractTableModel):
             # The underlying modification logic is in setData - not actually editable
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
-        if index.column() == CHECKBOX_COL:  # Checkbox 
+        if index.column() in (PRIMARY_CHECKBOX_COL, AUX_CHECKBOX_COL):  # Checkbox 
             return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable  # Checkbox items
 
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable  # Editable items
@@ -125,11 +124,13 @@ class AudioTableView(QTableView):
     def __init__(self, 
         model : AudioTableModel, 
         ras : list[RefAudio],
-        hashesCheckedSet : set[str]):
+        auxSelectedSet : set[str],
+        primaryRefHash : set[str]):
         super().__init__()
         self.setModel(model)
         self.ras = ras
-        self.hashesCheckedSet = hashesCheckedSet
+        self.auxSelectedSet = auxSelectedSet
+        self.primaryRefHash = primaryRefHash
 
         self.visible_widgets = {}
 
@@ -145,13 +146,26 @@ class AudioTableView(QTableView):
         ra = self.ras[row]
 
         check_box = QCheckBox()
-        if ra.audio_hash in self.hashesCheckedSet:
+        if ra.audio_hash in self.auxSelectedSet:
             check_box.setChecked(True)
         check_box.stateChanged.connect(
             partial(self.update_hashes_set, 
             check_box=check_box, audio_hash=ra.audio_hash)
         )
-        self.setIndexWidget(self.model().index(row, CHECKBOX_COL), check_box)
+        self.setIndexWidget(self.model().index(row, AUX_CHECKBOX_COL), check_box)
+
+        radio_button = QRadioButton()
+        if ra.audio_hash in self.primaryRefHash:
+            radio_button.setChecked(True)
+        def update_primary_hash(state : bool, audio_hash : str):
+            if ra.audio_hash in self.primaryRefHash and state == False:
+                self.primaryRefHash.discard(audio_hash)
+            elif ra.audio_hash not in self.primaryRefHash and state == True:
+                self.primaryRefHash.clear()
+                self.primaryRefHash.add(audio_hash)
+        radio_button.toggled.connect(partial(
+            update_primary_hash, audio_hash = ra.audio_hash))
+        self.setIndexWidget(self.model().index(row, PRIMARY_CHECKBOX_COL), radio_button)
 
         preview = SmallAudioPreviewWidget(
             ra.local_filepath)
@@ -161,7 +175,7 @@ class AudioTableView(QTableView):
 
     def remove_custom_widgets(self, row):
         if row in self.visible_widgets:
-            self.setIndexWidget(self.model().index(row, CHECKBOX_COL), None)
+            self.setIndexWidget(self.model().index(row, PRIMARY_CHECKBOX_COL), None)
             self.setIndexWidget(self.model().index(row, PREVIEW_COL), None)
             del self.visible_widgets[row]
 
@@ -201,7 +215,7 @@ class AudioTableView(QTableView):
         check_box: QCheckBox,
         audio_hash: str):
         if check_box.isChecked():
-            self.hashesCheckedSet.add(audio_hash)
+            self.auxSelectedSet.add(audio_hash)
         else:
-            self.hashesCheckedSet.discard(audio_hash)
+            self.auxSelectedSet.discard(audio_hash)
         self.hashesCheckedChanged.emit()

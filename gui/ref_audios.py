@@ -10,7 +10,8 @@ from gui.audio_preview import AudioPreviewWidget
 from gui.file_button import FileButton
 from gui.ref_audio_table import (AudioTableModel, AudioTableView,
     FILEPATH_COL, CHARACTER_COL, EMOTION_COL, UTTERANCE_COL,
-    AUDIOHASH_COL, CHECKBOX_COL, PREVIEW_COL, DURATION_COL)
+    AUDIOHASH_COL, PRIMARY_CHECKBOX_COL, AUX_CHECKBOX_COL,
+     PREVIEW_COL, DURATION_COL)
 from pathlib import Path
 from functools import partial
 from typing import Optional
@@ -131,7 +132,8 @@ class RefAudiosFrame(QGroupBox):
         self.lay = QVBoxLayout(self)
         self.table = None
         
-        self.hashesCheckedSet : set[str] = core.hashesSelectedSet
+        self.auxSelectedSet : set[str] = core.auxSelectedSet
+        self.primaryRefHash : set[str] = core.primaryRefHash
         self.rowToHashMap = dict()
         self.hashToPathMap = dict()
         
@@ -190,7 +192,10 @@ class RefAudiosFrame(QGroupBox):
         self.lay.addWidget(bf3)
 
         self.sumdur = QLabel("Sum of durations: 0.0")
-        self.lay.addWidget(self.sumdur)
+        #self.lay.addWidget(self.sumdur)
+        self.primary_display = QLabel("Primary selected audio: ")
+
+        # TODO: Show only selected
 
         core.databaseSelfUpdate.connect(self.shouldBuildTable)
 
@@ -286,7 +291,7 @@ class RefAudiosFrame(QGroupBox):
     def update_hashes_checked(self):
         ra : RefAudio
         checkedAudio = [
-            ra for ra in self.ras if ra.audio_hash in self.hashesCheckedSet]
+            ra for ra in self.ras if ra.audio_hash in self.auxSelectedSet]
         sumdur = 0.0
         for ra in checkedAudio:
             sumdur += ra.duration
@@ -329,9 +334,10 @@ class RefAudiosFrame(QGroupBox):
             del self.table
 
         # data modification logic is in AudioTableModel
-        model = AudioTableModel(ras, self.hashesCheckedSet)
+        model = AudioTableModel(ras)
         model.dataHasChanged.connect(self.build_character_filter)
-        self.table = AudioTableView(model, ras, self.hashesCheckedSet)
+        self.table = AudioTableView(model, ras, self.auxSelectedSet,
+            self.primaryRefHash)
         self.table.hashesCheckedChanged.connect(self.update_hashes_checked)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.table.setSelectionMode(QTableView.ExtendedSelection)
@@ -345,7 +351,8 @@ class RefAudiosFrame(QGroupBox):
         self.table.setColumnWidth(DURATION_COL, 80)
         self.table.setColumnWidth(UTTERANCE_COL, 120)
         self.table.setColumnWidth(AUDIOHASH_COL, 60)
-        self.table.setColumnWidth(CHECKBOX_COL, 60)
+        self.table.setColumnWidth(PRIMARY_CHECKBOX_COL, 60)
+        self.table.setColumnWidth(AUX_CHECKBOX_COL, 60)
         self.table.setColumnWidth(PREVIEW_COL, 60)
         
         self.table.horizontalHeader().setSectionResizeMode(FILEPATH_COL,
@@ -360,7 +367,9 @@ class RefAudiosFrame(QGroupBox):
             QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(AUDIOHASH_COL,
             QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(CHECKBOX_COL,
+        self.table.horizontalHeader().setSectionResizeMode(PRIMARY_CHECKBOX_COL,
+            QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(AUX_CHECKBOX_COL,
             QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(PREVIEW_COL,
             QHeaderView.Fixed)

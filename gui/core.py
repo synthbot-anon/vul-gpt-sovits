@@ -4,6 +4,7 @@ from gui.default_config import default_config, DEFAULT_CONFIG_PATH
 from omegaconf import OmegaConf
 from gui.database import GPTSovitsDatabase, CLIENT_DB_FILE, RefAudio
 from pathlib import Path
+from typing import Optional
 
 class GPTSovitsCore(QObject):
     updateConnectionStatus = pyqtSignal(str)
@@ -25,7 +26,8 @@ class GPTSovitsCore(QObject):
         with open(DEFAULT_CONFIG_PATH, 'w') as f:
             f.write(OmegaConf.to_yaml(self.cfg))
         self.database = GPTSovitsDatabase(db_file=CLIENT_DB_FILE)
-        self.hashesSelectedSet = set()
+        self.auxSelectedSet = set()
+        self.primaryRefHash = set()
         self.integrity_update()
 
     def integrity_update(self):
