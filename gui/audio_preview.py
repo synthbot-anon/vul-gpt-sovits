@@ -13,7 +13,6 @@ import soundfile as sf
 import os
 import time
 import numpy as np
-import matplotlib.pyplot as plt
 from io import BytesIO
 from gui.util import qshrink
 
