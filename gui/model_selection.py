@@ -8,6 +8,7 @@ from gui.stopwatch import Stopwatch
 from typing import Optional
 from logging import error
 import httpx
+import os
 
 class ModelSelection(QGroupBox):
     modelsReady = pyqtSignal(bool)
@@ -104,7 +105,7 @@ class ModelSelection(QGroupBox):
         mfl = QHBoxLayout(mf)
         qshrink(mfl)
         self.models_label = QLabel("Models loaded: GPT (None), SOVITS (None)")
-        self.models_label.setMaximumWidth(400)
+        self.models_label.setMaximumWidth(600)
         self.stopwatch = Stopwatch()
         mfl.addWidget(self.models_label)
         mfl.addWidget(self.stopwatch)
@@ -193,7 +194,8 @@ class ModelSelection(QGroupBox):
 
     def update_ui_loaded_models(self, data : dict):
         self.models_label.setText(
-            f"Models loaded: GPT ({data['gpt_path']}), SOVITS ({data['sovits_path']})")
+            f"Models loaded: GPT ({os.path.basename(data['gpt_path'])})"
+            f", SOVITS ({os.path.basename(data['sovits_path'])})")
 
     def update_ui_with_models(self, data : Optional[dict] = None):
         self.sovits_weights_cb.clear()
