@@ -20,6 +20,8 @@ class ServerFrame(QGroupBox):
         l2.addWidget(QLabel("Enter server host: "))
         l2.addStretch()
         self.le = QLineEdit()
+        if core.cfg.last_host is not None:
+            self.le.setText(core.cfg.last_host)
         self.le.setFixedWidth(300)
         l2.addWidget(self.le)
         

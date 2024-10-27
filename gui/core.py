@@ -25,12 +25,15 @@ class GPTSovitsCore(QObject):
             self.cfg = OmegaConf.create(default_config)
         else:
             self.cfg = OmegaConf.load(DEFAULT_CONFIG_PATH)
-        with open(DEFAULT_CONFIG_PATH, 'w') as f:
-            f.write(OmegaConf.to_yaml(self.cfg))
+        self.write_config()
         self.database = GPTSovitsDatabase(db_file=CLIENT_DB_FILE)
         self.auxSelectedSet = set()
         self.primaryRefHash = set()
         self.integrity_update()
+
+    def write_config(self):
+        with open(DEFAULT_CONFIG_PATH, 'w') as f:
+            f.write(OmegaConf.to_yaml(self.cfg))
 
     def integrity_update(self):
         if (self.database.integrity_update()):
@@ -56,6 +59,8 @@ class GPTSovitsCore(QObject):
             self.updateHost.emit(self.host, self.is_local)
             if len(self.host):
                 self.hostReady.emit(True)
+                self.cfg.last_host = h
+                self.write_config()
 
         worker.emitters.updateHost.connect(lam1)
         worker.emitters.updateStatus.connect(lambda status: 

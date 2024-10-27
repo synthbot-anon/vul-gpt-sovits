@@ -19,5 +19,6 @@ default_config = {
         # OOMs are hard to recover from, so we set the batch size
         # to a relatively low value
         'max_batch_size': 20
-    }
+    },
+    "last_host": None
 }
