@@ -111,6 +111,10 @@ class ModelSelection(QGroupBox):
         l1.addWidget(mf)
         self.update_ui_with_models()
 
+    def host_ready_hook(self, ready : bool = False):
+        if ready:
+            self.retrieve_current_models()
+            self.retrieve_models(ready)
 
     def update_ready(self, ready : bool):
         self.sovits_weights_cb.setEnabled(ready)
@@ -118,6 +122,24 @@ class ModelSelection(QGroupBox):
         self.folder_weights_cb.setEnabled(ready)
         self.sync_button.setEnabled(ready)
         self.load_button.setEnabled(ready)
+
+    def retrieve_current_models(self):
+        worker = GetWorker(host=self.core.host,
+            route="/current_models")
+        def lam1(data : dict):
+            update_ui_loaded_models(data)
+            self.stopwatch.stop_reset_stopwatch()
+        worker.emitters.gotResult.connect(lam1)
+        def handle_error(data):
+            self.stopwatch.stop_reset_stopwatch()
+            if data.get('error'):
+                self.models_label.setText(f"Error: {data['error']}")
+        worker.emitters.error.connect(handle_error)
+        self.models_label.setText("Getting current model...")
+        # Reset stopwatch
+        self.stopwatch.stop_reset_stopwatch()
+        self.stopwatch.start_stopwatch()
+        self.thread_pool.start(worker)
 
     def retrieve_models(self, ready : bool = False):
         if not ready:

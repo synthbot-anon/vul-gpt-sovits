@@ -223,6 +223,13 @@ class SetModelsInfo(BaseModel):
     cnhubert_base_path: Optional[str] = None
     bert_path: Optional[str] = None
 
+@app.get("/current_models")
+def current_models():
+    return {
+        'gpt_path': tts_pipeline.configs.t2s_weights_path,
+        'sovits_path': tts_pipeline.configs.vits_weights_path
+    }
+
 @app.post("/set_models")
 def set_models(info: SetModelsInfo):
     # Environment variables will be used for model setup
@@ -240,8 +247,8 @@ def set_models(info: SetModelsInfo):
         info.sovits_path))
     # I'm not sure these reflect the actual paths?
     return {
-        'gpt_path': tts_pipeline.configs.vits_weights_path,
-        'sovits_path': tts_pipeline.configs.t2s_weights_path
+        'gpt_path': tts_pipeline.configs.t2s_weights_path,
+        'sovits_path': tts_pipeline.configs.vits_weights_path
     }
 
 class GenerateInfo(BaseModel):
