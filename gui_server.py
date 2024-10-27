@@ -46,6 +46,22 @@ if torch.cuda.is_available():
 else:
     device = "cpu"
 
+def download_pretrained_models_if_not_present():
+    repo_id = "lj1995/GPT-SoVITS"
+    local_dir = "GPT_SoVITS/pretrained_models"
+    if not os.path.exists("GPT_SoVITS/pretrained_models/chinese-hubert-base"):
+        huggingface_hub.hf_hub_download(repo_id=repo_id, filename="chinese-hubert-base/config.json", local_dir=local_dir)
+        huggingface_hub.hf_hub_download(repo_id=repo_id, filename="chinese-hubert-base/preprocessor_config.json", local_dir=local_dir)
+        huggingface_hub.hf_hub_download(repo_id=repo_id, filename="chinese-hubert-base/pytorch_model.bin", local_dir=local_dir)
+    if not os.path.exists("GPT_SoVITS/pretrained_models/chinese-robert-wwm-ext-large"):
+        huggingface_hub.hf_hub_download(repo_id=repo_id, filename="chinese-roberta-wwm-ext-large/config.json", local_dir=local_dir)
+        huggingface_hub.hf_hub_download(repo_id=repo_id, filename="chinese-roberta-wwm-ext-large/tokenizer.json", local_dir=local_dir)
+        huggingface_hub.hf_hub_download(repo_id=repo_id, filename="chinese-roberta-wwm-ext-large/pytorch_model.bin", local_dir=local_dir)
+    if (not os.path.exists("GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt") or
+        not os.path.exists("GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth")):
+        huggingface_hub.hf_hub_download(repo_id=repo_id, filename="gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt", local_dir=local_dir)
+        huggingface_hub.hf_hub_download(repo_id=repo_id, filename="gsv-v2final-pretrained/s2G2333k.pth", local_dir=local_dir)
+
 def init_pipeline():
     is_half = eval(os.environ.get("is_half", "True")) and torch.cuda.is_available()
     gpt_path = os.environ.get("gpt_path", None)
@@ -72,6 +88,7 @@ def init_pipeline():
     return tts_config, tts_pipeline
 
 app = FastAPI()
+download_pretrained_models_if_not_present()
 tts_config, tts_pipeline = init_pipeline()
 database = GPTSovitsDatabase(db_file=SERVER_DB_FILE)
 LOCAL_REF_SOUNDS_FOLDER = 'ref_sounds/'
@@ -315,12 +332,9 @@ def generate_wrapper(info: GenerateInfo):
         if info['n_repetitions'] is not None:
             n_reps = info['n_repetitions']
 
-            # We need a reliable way to insert generation boundaries into the text.
-            # Unfortunately the only way to do this is with sentence boundaries:
-            if not info['text'].strip().endswith((
-                '!', '?', '…', ',', '.', '-'," ")):
-                info['text'] = info['text'].strip() + '.'
-            info['text'] = (info['text']+'\n') * n_reps
+            # There IS no reliable way to get "correct" sentence segmentation 
+            # by adding weird punctuation/newlines/control sequences
+            # because their English splitting method is completely broken.
 
             old_sentence_lengths = 0
             for item in tts_pipeline.run(info):

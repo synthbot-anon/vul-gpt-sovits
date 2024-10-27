@@ -690,6 +690,7 @@ class TTS:
         actual_seed = set_seed(seed)
         parallel_infer = inputs.get("parallel_infer", True)
         repetition_penalty = inputs.get("repetition_penalty", 1.35)
+        n_repetitions = inputs.get("n_repetitions", None)
 
         if parallel_infer:
             print(i18n("并行推理模式已开启"))
@@ -790,6 +791,8 @@ class TTS:
         else:
             print(i18n("############ 切分文本 ############"))
             texts = self.text_preprocessor.pre_seg_text(text, text_lang, text_split_method)
+            if (n_repetitions is not None):
+                texts = texts * n_repetitions
             data = []
             for i in range(len(texts)):
                 if i%batch_size == 0:
