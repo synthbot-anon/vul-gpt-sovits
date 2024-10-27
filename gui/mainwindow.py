@@ -30,12 +30,12 @@ class CentralWidget(QFrame):
         l1.addWidget(_if)
 
 class GPTSoVITSClient(QMainWindow):
-    def __init__(self):
+    def __init__(self, core : GPTSovitsCore):
         super().__init__()
         self.setWindowTitle("GPT SoVITS Client")
         self.show()
         
-        self.core = GPTSovitsCore()
+        self.core = core
 
         # Toolbar
         self.toolbar = QToolBar()
