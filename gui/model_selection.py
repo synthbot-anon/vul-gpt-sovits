@@ -60,7 +60,7 @@ class ModelSelection(QGroupBox):
             )
         )
         sync_button.setEnabled(False)
-        self.core.hostReady.connect(self.retrieve_models)
+        self.core.hostReady.connect(self.host_ready_hook)
         self.core.newModelsAvailable.connect(
             lambda: self.retrieve_models(True))
         synclay.addWidget(sync_button)
@@ -106,6 +106,7 @@ class ModelSelection(QGroupBox):
         qshrink(mfl)
         self.models_label = QLabel("Models loaded: GPT (None), SOVITS (None)")
         self.models_label.setMaximumWidth(600)
+        self.models_label.setWordWrap(True)
         self.stopwatch = Stopwatch()
         mfl.addWidget(self.models_label)
         mfl.addWidget(self.stopwatch)
@@ -114,8 +115,8 @@ class ModelSelection(QGroupBox):
 
     def host_ready_hook(self, ready : bool = False):
         if ready:
-            self.retrieve_current_models()
             self.retrieve_models(ready)
+            self.retrieve_current_models()
 
     def update_ready(self, ready : bool):
         self.sovits_weights_cb.setEnabled(ready)
@@ -128,7 +129,7 @@ class ModelSelection(QGroupBox):
         worker = GetWorker(host=self.core.host,
             route="/current_models")
         def lam1(data : dict):
-            update_ui_loaded_models(data)
+            self.update_ui_loaded_models(data)
             self.stopwatch.stop_reset_stopwatch()
         worker.emitters.gotResult.connect(lam1)
         def handle_error(data):
@@ -146,13 +147,13 @@ class ModelSelection(QGroupBox):
         if not ready:
             return
         self.modelsReady.emit(False)
-        self.models_label.setText("Fetching available models from server...")
+        #self.models_label.setText("Fetching available models from server...")
         # Reset stopwatch
         self.stopwatch.stop_reset_stopwatch()
         self.stopwatch.start_stopwatch()
         def lam1(data):
             self.modelsReady.emit(True)
-            self.models_label.setText("Got available models")
+            #self.models_label.setText("Got available models")
             # Stop stopwatch
             self.stopwatch.stop_reset_stopwatch()
             self.update_ui_with_models(data)
