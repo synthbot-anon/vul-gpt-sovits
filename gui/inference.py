@@ -200,6 +200,7 @@ class InferenceFrame(QGroupBox):
         self.prompt_edit = QPlainTextEdit()
         self.prompt_edit.setMinimumWidth(300)
         pelay.addWidget(self.prompt_edit)
+        pe_box.setFixedHeight(100)
 
 
         # inputs grid
