@@ -460,6 +460,7 @@ class InferenceFrame(QGroupBox):
         qshrink(stl)
         self.status_label = QLabel("Status")
         self.status_label.setFixedWidth(400)
+        self.status_label.setWordWrap(True)
         self.stopwatch = Stopwatch()
         stl.addWidget(self.status_label)
         stl.addWidget(self.stopwatch)
@@ -511,6 +512,10 @@ class InferenceFrame(QGroupBox):
     def interrupt(self):
         post_worker = PostWorker(
             self.core.host, '/stop', None)
+        def lam1():
+            self.stopwatch.stop_reset_stopwatch()
+            self.gen_button.setEnabled(True)
+        post_worker.emitters.gotResult.connect(lam1)
         self.thread_pool.start(post_worker)
 
     def handle_inference_output(self, info : dict, idx : int, audio : list):
