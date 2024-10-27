@@ -102,7 +102,7 @@ class T2SModel(nn.Module):
         self.onnx_encoder = T2SEncoder(self.t2s_model, self.vits_model)
         self.first_stage_decoder = self.t2s_model.first_stage_decoder
         self.stage_decoder = self.t2s_model.stage_decoder
-        #self.t2s_model = torch.jit.script(self.t2s_model)
+        #self.t2s_model = torch.jit._script_if_tracing(self.t2s_model)
 
     def forward(self, ref_seq, text_seq, ref_bert, text_bert, ssl_content):
         early_stop_num = self.t2s_model.early_stop_num
@@ -131,7 +131,7 @@ class T2SModel(nn.Module):
         return y[:, -idx:].unsqueeze(0)
 
     def export(self, ref_seq, text_seq, ref_bert, text_bert, ssl_content, project_name, dynamo=False):
-        #self.onnx_encoder = torch.jit.script(self.onnx_encoder)
+        #self.onnx_encoder = torch.jit._script_if_tracing(self.onnx_encoder)
         if dynamo:
             export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
             onnx_encoder_export_output = torch.onnx.dynamo_export(

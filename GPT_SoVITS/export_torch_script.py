@@ -40,7 +40,7 @@ def get_raw_t2s_model(dict_s1) -> Text2SemanticLightningModule:
     t2s_model = t2s_model.eval()
     return t2s_model
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 def logits_to_probs(
     logits,
     previous_tokens: Optional[torch.Tensor] = None,
@@ -83,13 +83,13 @@ def logits_to_probs(
     probs = torch.nn.functional.softmax(logits, dim=-1)
     return probs
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 def multinomial_sample_one_no_sync(probs_sort):  
     # Does multinomial sampling without a cuda synchronization
     q = torch.randn_like(probs_sort)
     return torch.argmax(probs_sort / q, dim=-1, keepdim=True).to(dtype=torch.int)
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 def sample(
     logits,
     previous_tokens,
@@ -105,7 +105,7 @@ def sample(
     return idx_next, probs
 
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 def spectrogram_torch(y:Tensor, n_fft:int, sampling_rate:int, hop_size:int, win_size:int, center:bool=False):
     hann_window = torch.hann_window(win_size,device=y.device,dtype=y.dtype)
     y = torch.nn.functional.pad(
@@ -157,7 +157,7 @@ class DictToAttrRecursive(dict):
         except KeyError:
             raise AttributeError(f"Attribute {item} not found")
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 class T2SMLP:
     def __init__(self, w1, b1, w2, b2):
         self.w1 = w1
@@ -170,7 +170,7 @@ class T2SMLP:
         x = F.linear(x, self.w2, self.b2)
         return x
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 class T2SBlock:
     def __init__(
             self,
@@ -306,7 +306,7 @@ class T2SBlock:
         )
         return x, k_cache, v_cache
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 class T2STransformer:
     def __init__(self, num_blocks : int, blocks: list[T2SBlock]):
         self.num_blocks : int = num_blocks
@@ -515,7 +515,7 @@ bert_path = os.environ.get(
 cnhubert_base_path = "GPT_SoVITS/pretrained_models/chinese-hubert-base"
 cnhubert.cnhubert_base_path = cnhubert_base_path
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 def build_phone_level_feature(res:Tensor, word2ph:IntTensor):
     phone_level_feature = []
     for i in range(word2ph.shape[0]):
@@ -591,7 +591,7 @@ def export(gpt_path, vits_path):
     ref_audio = torch.tensor([load_audio("output/denoise_opt/chen1.mp4_0000033600_0000192000.wav", 16000)]).float()
     ssl = SSLModel()
     s = ExportSSLModel(torch.jit.trace(ssl,example_inputs=(ref_audio)))
-    torch.jit.script(s).save("onnx/xw/ssl_model.pt")
+    torch.jit._script_if_tracing(s).save("onnx/xw/ssl_model.pt")
     print('#### exported ssl ####')
 
     ref_bert = bert(**ref_bert_inputs)
@@ -607,7 +607,7 @@ def export(gpt_path, vits_path):
     raw_t2s = get_raw_t2s_model(dict_s1)
     t2s_m = T2SModel(raw_t2s)
     t2s_m.eval()
-    t2s = torch.jit.script(t2s_m)
+    t2s = torch.jit._script_if_tracing(t2s_m)
     print('#### script t2s_m ####')
     
     print("vits.hps.data.sampling_rate:",vits.hps.data.sampling_rate)
@@ -630,13 +630,13 @@ def export(gpt_path, vits_path):
     gpt_sovits_export.save("onnx/xw/gpt_sovits_model.pt")
     print('#### exported gpt_sovits ####')
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 def parse_audio(ref_audio):
     ref_audio_16k = torchaudio.functional.resample(ref_audio,48000,16000).float()#.to(ref_audio.device)
     ref_audio_sr = torchaudio.functional.resample(ref_audio,48000,32000).float()#.to(ref_audio.device)
     return ref_audio_16k,ref_audio_sr
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 def resamplex(ref_audio:torch.Tensor,src_sr:int,dst_sr:int)->torch.Tensor:
     return torchaudio.functional.resample(ref_audio,src_sr,dst_sr).float()
 

@@ -36,7 +36,7 @@ default_config = {
     "EOS": 1024,
 }
 
-# @torch.jit.script ## 使用的话首次推理会非常慢，而且推理速度不稳定
+# @torch.jit._script_if_tracing ## 使用的话首次推理会非常慢，而且推理速度不稳定
 # Efficient implementation equivalent to the following:
 def scaled_dot_product_attention(query:torch.Tensor, key:torch.Tensor, value:torch.Tensor, attn_mask:Optional[torch.Tensor]=None, scale:Optional[torch.Tensor]=None) -> torch.Tensor:
     B, H, L, S =query.size(0), query.size(1), query.size(-2), key.size(-2)
@@ -65,7 +65,7 @@ def scaled_dot_product_attention(query:torch.Tensor, key:torch.Tensor, value:tor
 
     return attn_weight @ value
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 class T2SMLP:
     def __init__(self, w1, b1, w2, b2):
         self.w1 = w1
@@ -79,7 +79,7 @@ class T2SMLP:
         return x
 
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 class T2SBlock:
     def __init__(
             self,
@@ -225,7 +225,7 @@ class T2SBlock:
         return x, k_cache, v_cache
 
 
-@torch.jit.script
+@torch.jit._script_if_tracing
 class T2STransformer:
     def __init__(self, num_blocks : int, blocks: List[T2SBlock]):
         self.num_blocks : int = num_blocks
