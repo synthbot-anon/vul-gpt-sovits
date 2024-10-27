@@ -88,6 +88,7 @@ def init_pipeline():
     return tts_config, tts_pipeline
 
 app = FastAPI()
+last_n_repetitions = 1
 download_pretrained_models_if_not_present()
 tts_config, tts_pipeline = init_pipeline()
 database = GPTSovitsDatabase(db_file=SERVER_DB_FILE)
@@ -295,8 +296,6 @@ class GenerateInfo(BaseModel):
     n_repetitions: Optional[int] = None
 
 def generate_wrapper(info: GenerateInfo):
-    # seed = -1 if info.keep_random else seed
-    # actual_seed = seed if seed not in [-1, "", None] else random.randrange(1 << 32)
     i = 0
     info : dict = json.loads(info.json())
     
@@ -326,11 +325,13 @@ def generate_wrapper(info: GenerateInfo):
         info['aux_ref_audio_paths'] = paths
 
     # 2. Parallelize repetitions if possible
-    if info['text_split_method'] == 'cut4' and info['keep_random']:
+    if info['keep_random']:
         # Handle repetitions
         info['return_fragment'] = True
         if info['n_repetitions'] is not None:
             n_reps = info['n_repetitions']
+            global last_n_repetitions
+            last_n_repetitions = n_reps
 
             # There IS no reliable way to get "correct" sentence segmentation 
             # by adding weird punctuation/newlines/control sequences
@@ -354,31 +355,26 @@ def generate_wrapper(info: GenerateInfo):
                 yield json.dumps(chunk) + '\n'
     else:
         if info['n_repetitions'] is not None and info['n_repetitions'] != 1:
-            if info['text_split_method'] != 'cut4':
-                yield json.dumps(
-                    {"warning": f"Cannot parallelize n_repetitions generations with "
-                    f"cut method {info['text_split_method']}, using serial generation"}) + '\n'
             if not info['keep_random']:
                 yield json.dumps({"warning": 
                     f"Multiple non-random generations offers no benefit, inferring anyways"}) + '\n'
 
-        n_repetitions = 1
-        if info['n_repetitions'] is not None:
-            n_repetitions = info['n_repetitions']
+        n_repetitions = info.get('n_repetitions', 1)
         out_sr : int = 0
 
         # Non-parallelizable so no point in complicating things by returning fragments
         info['return_fragment'] = False
         audios = []
+
+        for item in tts_pipeline.run(info):
+            sr, audio = item
         for i in range(n_repetitions):
-            for item in tts_pipeline.run(info):
-                sr, audio = item
-                yield json.dumps({
-                    'sr': sr,
-                    'audio': base64.b64encode(audio).decode("ascii"),
-                    'this_gen_lengths': None,
-                    'parallelized': False
-                }) + '\n'
+            yield json.dumps({
+                'sr': sr,
+                'audio': base64.b64encode(audio).decode("ascii"),
+                'this_gen_lengths': None,
+                'parallelized': False
+            }) + '\n'
 
         # "item" seems to be (sr, audio) : (int, np.ndarray), but we don't know what the dimension is
         # np.concatenate(audio, 0) implies that the result is 1-dimensionaly
