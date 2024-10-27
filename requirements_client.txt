@@ -1,6 +1,6 @@
 httpx==0.27.2
 huggingface_hub==0.24.6
-numpy==2.1.2
+numpy
 omegaconf==2.2.0
 peewee==3.17.7
 pydub==0.25.1
