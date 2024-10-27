@@ -21,3 +21,5 @@ ffprobe*
 *.ipynb
 *.db
 ref_audios
+outputs
+effusive_gui_config.yaml
