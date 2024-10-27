@@ -18,6 +18,10 @@ from gui.util import (get_available_filename, sanitize_filename,
 from pydub import AudioSegment
 import huggingface_hub
 import hashlib
+import nltk
+
+# download nltk package
+nltk.download('averaged_perceptron_tagger')
 
 # sys path
 now_dir = os.getcwd()
