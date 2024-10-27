@@ -2,6 +2,7 @@ from omegaconf import OmegaConf
 
 DEFAULT_CONFIG_PATH = "effusive_gui_config.yaml"
 default_config = {
+    "enable_hi_dpi": False,
     "ref_audios_dir": "ref_audios",
     "outputs_dir": "outputs",
     "inference": {

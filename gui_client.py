@@ -2,6 +2,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication
 from gui.mainwindow import GPTSoVITSClient
+from gui.core import GPTSovitsCore
 import qdarktheme
 
 def load_stylesheet(file_path):
@@ -9,9 +10,11 @@ def load_stylesheet(file_path):
         return f.read()
         
 if __name__ == '__main__':
-    qdarktheme.enable_hi_dpi()
+    core = GPTSovitsCore()
+    if core.cfg.enable_hi_dpi:
+        qdarktheme.enable_hi_dpi()
     app = QApplication(sys.argv)
     qdarktheme.setup_theme()
-    window = GPTSoVITSClient()
+    window = GPTSoVITSClient(core=core)
     window.show()
     sys.exit(app.exec_())
