@@ -4,10 +4,48 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import (Qt, QRunnable, QObject, pyqtSignal, QThreadPool)
 from gui.model_utils import find_models_hf
-from gui.core import GPTSovitsCore
-from gui.requests import PostWorker
+from gui.core import GPTSovitsCore, now_dir
 from gui.stopwatch import Stopwatch
 from gui.util import qshrink
+from pathlib import Path
+import os
+import huggingface_hub
+
+class DownloadModelsWorkerEmitters(QObject):
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+
+class DownloadModelsWorker(QRunnable):
+    def __init__(self, 
+        core : GPTSovitsCore,
+        data : dict):
+        super().__init__()
+        self.data = data
+        self.core = core
+        self.emitters = DownloadModelsWorkerEmitters()
+
+    def run(self):
+        info = self.data
+        models_dir = Path(now_dir) / self.core.cfg.models_dir
+        model_dir : Path = models_dir / info['model_name']
+        strmodel_dir = str(model_dir.absolute())
+        if not model_dir.exists():
+            os.makedirs(strmodel_dir)
+        try:
+            huggingface_hub.hf_hub_download(
+                repo_id = info['repo'],
+                filename = info['gpt_path'],
+                local_dir = models_dir
+            )
+            huggingface_hub.hf_hub_download(
+                repo_id = info['repo'],
+                filename = info['sovits_path'],
+                local_dir = models_dir
+            )
+            self.emitters.finished.emit()
+        except Exception as e:
+            self.emitters.error.emit(str(e))
+            return
 
 class FetchModelsWorkerEmitters(QObject):
     finished = pyqtSignal(dict)
@@ -28,13 +66,14 @@ class FetchModelsWorker(QRunnable):
 class ModelDownload(QDialog):
     updateRepo = pyqtSignal(dict)
     modelsDownloaded = pyqtSignal()
+
     def __init__(self, core: GPTSovitsCore, parent=None):
         super().__init__(parent)
         l1 = QVBoxLayout()
         
         hf_frame = QFrame()
         lhf = QHBoxLayout(hf_frame)
-        self.hf_repo_edit = QLineEdit()
+        self.hf_repo_edit = QLineEdit("therealvul/GPT-SoVITS-v2")
         lhf.addWidget(QLabel("HF Repo: "))
         lhf.addWidget(self.hf_repo_edit)
         self.hf_repo_edit.editingFinished.connect(
@@ -46,7 +85,7 @@ class ModelDownload(QDialog):
         cb_frame = QFrame()
         lcb = QHBoxLayout(cb_frame)
         self.models_cb = QComboBox()
-        self.models_cb.setFixedWidth(200)
+        self.models_cb.setFixedWidth(300)
         lcb.addWidget(QLabel("Models: "))
         lcb.addWidget(self.models_cb)
 
@@ -64,7 +103,8 @@ class ModelDownload(QDialog):
         sf_l = QHBoxLayout(sf)
         qshrink(sf_l)
         self.status = QLabel("Status")
-        self.status.setMaximumWidth(300)
+        self.status.setWordWrap(True)
+        self.status.setMaximumWidth(400)
         sf_l.addWidget(self.status)
         self.stopwatch = Stopwatch()
         sf_l.addWidget(self.stopwatch)
@@ -73,6 +113,7 @@ class ModelDownload(QDialog):
 
         self.core = core
         self.modelsDownloaded.connect(self.core.newModelsAvailable)
+        self.repo_edit_finished()
 
     def request_add(self):
         model_name : str = self.models_cb.currentText()
@@ -81,19 +122,17 @@ class ModelDownload(QDialog):
             return
         self.status.setText(f"Requested download of {model_name}")
         self.stopwatch.start_stopwatch()
-        worker : PostWorker = PostWorker(
-            host=self.core.host,
-            route='/download_hf_models',
+        worker = DownloadModelsWorker(
+            core=self.core,
             data={
                 'model_name': model_name,
                 'repo': data['repo'],
                 'gpt_path': data['gpt_weight'],
                 'sovits_path': data['sovits_weight'],
-            },
-            timeout=120.0 # Shouldn't take longer than 2mins
+            }
         )
-        worker.emitters.gotResult.connect(self.modelsDownloaded)
-        worker.emitters.gotResult.connect(lambda:
+        worker.emitters.finished.connect(self.modelsDownloaded)
+        worker.emitters.finished.connect(lambda:
             self.stopwatch.stop_reset_stopwatch()
         )
         def handle_error(data):

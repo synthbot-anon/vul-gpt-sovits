@@ -5,6 +5,7 @@ default_config = {
     "enable_hi_dpi": False,
     "ref_audios_dir": "ref_audios",
     "outputs_dir": "outputs",
+    "models_dir": "models",
     "inference": {
         "top_k": 5,
         "top_p": 1.0,
@@ -20,5 +21,4 @@ default_config = {
         # to a relatively low value
         'max_batch_size': 20
     },
-    "last_host": None
 }

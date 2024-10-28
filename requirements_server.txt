@@ -1,6 +1,0 @@
-uvicorn
-huggingface_hub
-fastapi[standard]
-peewee
-av
-pydub

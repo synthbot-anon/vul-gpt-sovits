@@ -117,11 +117,6 @@ class RefAudiosContext:
             ref_audio.character = character
         ref_audio.save()
         
-    # this won't handle uploading; that only happens once we actually
-    # need to send TTS requests
-    # or will it? maybe it's better to passively upload reference audios in
-    # idle time?
-
 class RefAudiosFrame(QGroupBox):
     # signal(character filter, fuzzy text filter)
     shouldBuildTable = pyqtSignal()
@@ -340,7 +335,7 @@ class RefAudiosFrame(QGroupBox):
         if self.show_select.isChecked():
             ras = [ra for ra in ras if ra.audio_hash 
                 in self.context.core.auxSelectedSet or
-                ra in self.context.core.primaryRefHash]
+                ra.audio_hash in self.context.core.primaryRefHash]
 
         # Apply text filter
         ras = self.fuzzy_utterance_filter(ras)

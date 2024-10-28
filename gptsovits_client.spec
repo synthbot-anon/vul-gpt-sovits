@@ -1,18 +1,36 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_data_files
 
+datas = []
+datas.extend(collect_data_files('gradio_client'))
+datas.extend(collect_data_files('py3langid'))
+datas.append(('tools/i18n/locale', 'tools/i18n/locale'))
+datas.append(('GPT_SoVITS/text', 'text'))
+datas.extend(collect_data_files('jieba_fast'))
+datas.extend(collect_data_files('g2p_en'))
+datas.extend(collect_data_files('wordsegment'))
 
 a = Analysis(
     ['gui_client.py'],
-    pathex=[],
+    pathex=['GPT_SoVITS'],
     binaries=[],
-    datas=[],
-    hiddenimports=[],
+    datas=datas,
+    hiddenimports=['uvicorn.lifespan.off','uvicorn.lifespan.on','uvicorn.lifespan',
+'uvicorn.protocols.websockets.auto','uvicorn.protocols.websockets.wsproto_impl',
+'uvicorn.protocols.websockets_impl','uvicorn.protocols.http.auto',
+'uvicorn.protocols.http.h11_impl','uvicorn.protocols.http.httptools_impl',
+'uvicorn.protocols.websockets','uvicorn.protocols.http','uvicorn.protocols',
+'uvicorn.loops.auto','uvicorn.loops.asyncio','uvicorn.loops.uvloop','uvicorn.loops',
+'uvicorn.logging', 'gui_server', 'wordsegment', 'g2p_en'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
-    optimize=0,
+    module_collection_mode={
+        'gradio': 'py',
+        'inflect': 'pyz+py'
+    }
 )
 pyz = PYZ(a.pure)
 
@@ -21,7 +39,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='gptsovits_client',
+    name='gptsovits',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -40,9 +58,10 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='gptsovits_client',
+    name='gptsovits',
 )
 import os
 import shutil
-shutil.copytree('ref_audios','dist/gptsovits_client/ref_audios')
-shutil.copy2('ts_cursor.png','dist/gptsovits_client/ts_cursor.png')
+shutil.copytree('ref_audios','dist/gptsovits/ref_audios')
+shutil.copytree('models','dist/gptsovits/models')
+shutil.copy2('ts_cursor.png','dist/gptsovits/ts_cursor.png')

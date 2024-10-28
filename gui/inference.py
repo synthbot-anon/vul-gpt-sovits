@@ -12,9 +12,9 @@ from PyQt5.QtGui import (
 from gui.core import GPTSovitsCore
 from gui.util import qshrink, sanitize_filename, get_available_filename
 from gui.audio_preview import RichAudioPreviewWidget
-from gui.database import RefAudio
-from gui.requests import PostWorker
+from gui.database import RefAudio, GPTSovitsDatabase
 from gui.stopwatch import Stopwatch
+from TTS_infer_pack.TTS import TTS, TTS_Config
 from pathlib import Path
 from logging import error
 import soundfile as sf
@@ -30,154 +30,81 @@ class InferenceWorkerEmitter(QObject):
     inferenceOutput = pyqtSignal(dict, int, list)
     sr = pyqtSignal(int)
     statusUpdate = pyqtSignal(str)
-    error = pyqtSignal()
 
 class InferenceWorker(QRunnable):
     def __init__(self, 
-        host : str,
-        is_local : bool,
         info : dict,
-        hash_to_path_map : dict):
+        core : GPTSovitsCore):
         super().__init__()
         self.info = info
-        self.host = host
-        self.is_local = is_local
-        self.hash_to_path_map = hash_to_path_map
+        self.core = core
         self.emitters = InferenceWorkerEmitter()
 
     def run(self):
         info = self.info
-        # 1. Test server for reference audio hashes
-        url = f"{self.host}/test_hashes"
+        self.core.tts_pipeline : TTS
+        self.core.database : GPTSovitsDatabase
+        tts_pipeline = self.core.tts_pipeline 
 
-        selected_hashes : list
-        selected_hashes = [info['ref_audio_hash']]
-        if info.get('aux_ref_audio_hashes') is not None:
-            selected_hashes.extend(info['aux_ref_audio_hashes'])
-        try:
-            response = httpx.post(url, json={'hashes': selected_hashes})
-            if response.status_code == 200:
-                self.emitters.statusUpdate.emit('Testing audio hashes')
-            else:
-                self.emitters.statusUpdate.emit(f'Failed test audio hashes')
-                self.emitters.error.emit()
-                return
-        except httpx.RequestError as e:
-            error(f"Error testing audio hashes: {e}")
-            self.emitters.statusUpdate.emit(f'Error testing audio hashes: {e}')
-            self.emitters.error.emit()
-            return
+        if info['keep_random'] and info['n_repetitions'] is not None:
+            # Important for repetitions
+            info['return_fragment'] = True
 
-        hashes_known : dict[str, bool] = response.json()
-        unknown_hashes = [k for k,v in hashes_known.items() if not v]
-        self.emitters.statusUpdate.emit('Finished testing audio hashes')
+            # Will receive sentence lengths in -samples-
+            sentence_lengths = []
+            info['send_sentence_lengths'] = sentence_lengths
 
-        # 2. Upload reference audios it doesn't know about
-        for unknown_hash in unknown_hashes:
-            self.upload_from_hash(unknown_hash)
+            sentences = []
+            old_sentence_lengths_len = 0
+            for item in tts_pipeline.run(info):
+                sr, audio = item
+                self.emitters.sr.emit(sr)
+                
+                this_gen_lengths = sentence_lengths[old_sentence_lengths_len:]
+                old_sentence_lengths_len = len(sentence_lengths)
 
-        # 3. Send the inference request
-        chunks = []
-        self.sentences = []
-        self.repetitions = []
-        self.is_parallelized = False
-        self.repetition_ctr = 0
-        self.emitters.statusUpdate.emit('Beginning generation')
-        try:
-            infer_url = f"{self.host}/generate"
-            with httpx.stream("POST", infer_url, json=self.info, timeout=None) as r:
-                for line in r.iter_lines():
-                    if line is None or not line.strip(): # skip empty lines
-                        continue
-                    chunk = json.loads(line)
-                    self.process_chunk(chunk) # will transmit non-parallelized
-        except httpx.RequestError as e:
-            self.emitters.statusUpdate.emit(str(e))
-            self.emitters.error.emit()
-            return
+                # Split the current gen into sentences
+                start = 0
+                for length in this_gen_lengths:
+                    end = start + length
+                    sentences.append(audio[start:end])
+                    start = end
 
-        # 4. (Transmitting parallel inference).         
-        # We count the number of individual sentences and divide it by
-        # n_repetitions, then split the list of output sentences
-        # into n_repetitions to get audio we can concatenate back into our
-        # final outputs.
-        try:
-            if self.is_parallelized:
-                segment_size = len(self.sentences) // info['n_repetitions']
-                segments = [
-                    self.sentences[i:i+segment_size] for i in range(
-                        0, len(self.sentences), segment_size)]
-                assert len(segments) == info['n_repetitions']
-                for i,segment in enumerate(segments):
-                    segment: list(np.ndarray)
-                    segment_audio : np.ndarray = np.concatenate(
-                        segment, dtype=np.int16)
-                    self.emitters.inferenceOutput.emit(
-                        self.info,
-                        i,
-                        segment_audio.tolist())
-        except Exception as e:
-            self.emitters.statusUpdate.emit(str(e))
-            self.emitters.error.emit()
-            return
+            # Split the number of sentences evenly into repetitions
+            rep_size = len(sentences) // info['n_repetitions']
+            reps = [
+                sentences[i:i+rep_size] for i in range(0,
+                    len(sentences), rep_size)]
+            assert len(reps) == info['n_repetitions']
+            for i,rep in enumerate(reps):
+                rep: list(np.ndarray)
+                rep_audio : np.ndarray = np.concatenate(
+                    rep, dtype=np.int16)
+                self.emitters.inferenceOutput.emit(
+                    self.info,
+                    i, rep_audio.tolist())
 
-        # Since we control the gui_server source this shouldn't create 
-        # compatibility issues since there is no other way for this request
-        # to go through.
-
-    def process_chunk(self, chunk):
-        if 'warning' in chunk:
-            self.emitters.statusUpdate.emit(f'Warning: {chunk["warning"]}')
-            return # No-op
-
-        audio = chunk['audio']
-        audio : bytes = base64.b64decode(audio.encode('ascii'))
-        audio_array : np.ndarray = np.frombuffer(audio, dtype=np.int16)
-        sr = chunk['sr']
-        self.emitters.sr.emit(sr)
-
-        # Then this generation can be split into sentences
-        if chunk['parallelized']:
-            # To construct the final output, we take each chunk and split it
-            # into its individual sentences using 'audio' and 'this_gen_lengths'.
-            sentence_lengths = chunk['this_gen_lengths']
-            start = 0
-            for length in sentence_lengths:
-                end = start + length
-                self.sentences.append(audio_array[start:end])
-                start = end
-            self.is_parallelized = True
         else:
-            self.emitters.inferenceOutput.emit(
-                self.info,
-                self.repetition_ctr,
-                audio_array.tolist())
-            self.repetition_ctr += 1
+            if info['n_repetitions'] is not None and info['n_repetitions'] != 1:
+                if not info['keep_random']:
+                    self.emitters.statusUpdate(
+                        "Multiple non-random generations offers no benefit. "
+                        "Inferring anyways.")
+            n_repetitions = info.get('n_repetitions', 1)
 
+            # No parallelization across repetitions needed, so
+            # no point in complicating things by returning fragments
+            info['return_fragment'] = False
 
-    def upload_from_hash(self, hsh):
-        upload_url = f"{self.host}/post_ref_audio"
-        pth = self.hash_to_path_map[hsh]
-        with open(pth, 'rb') as f:
-            audio = f.read()
-        upload_data = {
-            'audio_hash': hsh,
-        }
-        if self.is_local:
-            upload_data['local_filepath'] = pth
-        else:
-            base64_audio_data = base64.b64encode(audio).decode("ascii")
-            upload_data['base64_audio_data'] = base64_audio_data
-        try:
-            self.emitters.statusUpdate.emit(f'Uploading {pth}')
-            response = httpx.post(upload_url, json=upload_data, timeout=None)
-            if response.status_code == 201:
-                self.emitters.statusUpdate.emit(f'Uploaded {pth}')
-            else:
-                self.emitters.statusUpdate.emit(f'Failed upload {pth}')
-        except httpx.RequestError as e:
-            error(f"Error uploading ref audio: {e}")
-            raise
+            # There should only be one item.
+            for item in tts_pipeline.run(info):
+                sr, audio = item
+                self.emitters.sr.emit(sr)
+                audio : np.ndarray
+            for i in range(n_repetitions):
+                self.emitters.inferenceOutput.emit(
+                    self.info,
+                    i, audio.tolist())
 
 class InferenceFrame(QGroupBox):
     resultsReady = pyqtSignal(bool)
@@ -251,6 +178,7 @@ class InferenceFrame(QGroupBox):
 
         # use reference audio
         # TODO - I'm not sure this parameter actually has any effect
+        # So I've disabled it for now
         useref_f = QFrame()
         useref_f_lay = QHBoxLayout(useref_f)
         qshrink(useref_f_lay)
@@ -439,7 +367,7 @@ class InferenceFrame(QGroupBox):
 
         # generate
         self.gen_button = QPushButton("Generate")
-        self.gen_button.setEnabled(False)
+        #self.gen_button.setEnabled(False)
         self.gen_button.clicked.connect(self.generate)
         inputs_grid.addWidget(self.gen_button, 4, 0, 1, 1)
 
@@ -447,11 +375,10 @@ class InferenceFrame(QGroupBox):
 
         # interrupt
         self.interrupt_button = QPushButton("Interrupt")
-        self.interrupt_button.setEnabled(False)
+        #self.interrupt_button.setEnabled(False)
         self.interrupt_button.clicked.connect(self.interrupt)
         inputs_grid.addWidget(self.interrupt_button, 4, 1, 1, 1)
 
-        self.core.hostReady.connect(self.set_ready)
         self.core.modelsReady.connect(self.set_ready)
         
         def generation_set_ready(ready: bool):
@@ -514,13 +441,9 @@ class InferenceFrame(QGroupBox):
         pass
 
     def interrupt(self):
-        post_worker = PostWorker(
-            self.core.host, '/stop', None)
-        def lam1():
-            self.stopwatch.stop_reset_stopwatch()
-            self.gen_button.setEnabled(True)
-        post_worker.emitters.gotResult.connect(lam1)
-        self.thread_pool.start(post_worker)
+        self.core.tts_pipeline : TTS
+        # The TTS pipeline's stop is more a "suggestion" than rules.
+        self.core.tts_pipeline.stop()
 
     def handle_inference_output(self, info : dict, idx : int, audio : list):
         # We don't expect these to be sent out of order, so we can
@@ -579,36 +502,28 @@ class InferenceFrame(QGroupBox):
         ra : RefAudio = self.core.database.get_ref_audio(primaryRefHash)
         aux_ras = {h: self.core.database.get_ref_audio(h) for h in aux_hashes}
 
-        info['ref_audio_hash'] = primaryRefHash
+        r : RefAudio
+        aux_paths = [r.local_filepath for r in aux_ras.values()]
+
+        info['ref_audio_path'] = ra.local_filepath
         if len(self.sd_f_edit.text()):
             info['seed'] = int(self.sd_f_edit.text())
 
         if len(aux_hashes):
-            info['aux_ref_audio_hashes'] = aux_hashes
+            info['aux_ref_audio_paths'] = aux_hashes
 
         info['prompt_text'] = ra.utterance
         info['characters'] = ra.character
 
         r: RefAudio
-        hash_to_path_map = {
-            h: r.local_filepath for h,r in aux_ras.items()
-        }
-        hash_to_path_map[primaryRefHash] = ra.local_filepath
         self.warn("Sent generation request")
         self.resultsReady.emit(False)
         worker = InferenceWorker(
-            host=self.core.host,
-            is_local=self.core.is_local,
             info=info,
-            hash_to_path_map=hash_to_path_map)
+            core=self.core)
         worker.emitters.statusUpdate.connect(self.warn)
         worker.emitters.inferenceOutput.connect(self.handle_inference_output)
         worker.emitters.sr.connect(self.set_sr)
-        def handle_error():
-            # Allow retries
-            self.stopwatch.stop_reset_stopwatch()
-            self.gen_button.setEnabled(True)
-        worker.emitters.error.connect(handle_error)
         self.clear_preview_widgets()
         self.thread_pool.start(worker)
 
