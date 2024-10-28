@@ -16,7 +16,7 @@ An NVIDIA GPU is recommended. You can get away with 4 GB VRAM but higher is bett
 
 ## Installation
 ### Use from pyinstaller (Windows)
-The pyinstaller build uses approx. 10 GB of disk space including pretrained models bundled with it. As this is too large for GitHub, the latest release is hosted here and can be run simply by executing `gptsovits.exe`. The client will automatically download the necessary pretrained models for inference on startup.
+The pyinstaller build uses approx. 10 GB of disk space including pretrained models bundled with it. As this is too large for GitHub, the latest release is hosted [here](https://drive.google.com/file/d/1PZt71cOH0X7QSFRgcThTwC2_WOain7Nj/view?usp=drive_link) and can be run simply by executing `gptsovits.exe`. The client will automatically download the necessary pretrained models for inference on startup.
 
 ### Use from source (other) (recommend python=3.10)
 1. Clone the repository. Set up a conda environment if you wish
