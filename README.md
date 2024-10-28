@@ -26,7 +26,7 @@ The pyinstaller build uses approx. 10 GB of disk space including pretrained mode
 5. Then launch the server with `python gui_client.py`. The client will automatically download the necessary pretrained models for inference on startup.
 
 ## Usage
-**Starting the program.** Be patient -- there's a lot of Python in there! It takes me minimum 10 seconds to start seeing console output.
+- **Starting the program.** Be patient -- there's a lot of Python in there! It takes me minimum 10 seconds to start seeing console output.
 ### Adding models. 
 By default, the pyinstaller version comes "batteries included" with Mane 6 voices for TTS, but it will only have the base GPT-SoVITS model if you opted for a source install. You may be interested in downloading other models from a huggingface repo. This can be done from within the interface by clicking on the **Add Model** action in the toolbar. Typically, each model occupies ~220 MB of disk space.
 
@@ -34,17 +34,24 @@ By default, the pyinstaller version comes "batteries included" with Mane 6 voice
 2. Select the desired model to download.
 3. Click `add to server` and wait for the model to download.
 
+![Adding models](/../standalone_gui/docs/screenshots/addmodel.png)
+
 - Currently, this tool expects the huggingface repo to be laid out in a certain way; see [this repo](https://huggingface.co/therealvul/GPT-SoVITS-v2) for an example. I did not use `.zip` because it can obscure the directory structure.
 - Models downloaded this way are placed in the `models` directory which is created if it does not exist.
 - (pyinstaller) You can also manually add "loose" models (i.e. models not coupled to any particular character) by creating `GPT_weights_v2` and `SoVITS_weights_v2` directories next to the .exe and placing the weights in those respective directories.
 
 ### Model selection
 Under this section, you can select either individual weights or speaker-bundled weights (i.e. paired GPT and SoVITS weights corresponding to a particular speaker, typically downloaded using the above `Add Model` action and located in the `models` directory.). 
+
+![Selecting models](/../standalone_gui/docs/screenshots/selectmodel.png)
+
 - To load the selected model, you must click `Load selected models`. 
 - You can refresh the lists of available models from your filesystem by clicking `Refresh available models`.
 
 ### Reference audios
 GPT-SoVITS accepts reference audio clips which can be used to control the intonation and timbre of the resulting generated speech. The Reference Audios section allows for the inputting, labeling, organization, and selection of reference audio for your generations.
+
+![Reference audios](/../standalone_gui/docs/screenshots/refaudios.png)
 
 - **One "required" field you must fill out for generation is `Utterance`,** which you should fill with a transcription of what is spoken in the reference audio.
 - **One primary reference audio must be selected for generation.** The primary reference audio tends to control more overall pitch and intonation over timbre, while the aux reference audios have more control over timbre.
@@ -57,6 +64,8 @@ The words to be spoken can be filled out under **Text prompt**. When ready to su
 
 - The audio is outputted in an `outputs` directory by default.
 - The audio waveform preview supports drag+click to seek and spacebar to toggle playback.
+
+![Inference](/../standalone_gui/docs/screenshots/inference.png)
 
 - **Repetitions** can be used to generate, in parallel, multiple versions of the same prompt text, each of which will be displayed in the Generations section.
   * This is particularly useful for content creation purposes where you may be editing together multiple audio clips and looking for generations with specific inflections or other characteristics.
