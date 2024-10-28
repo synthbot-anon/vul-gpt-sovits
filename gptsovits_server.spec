@@ -7,13 +7,22 @@ datas.extend(collect_data_files('py3langid'))
 datas.append(('tools/i18n/locale', 'tools/i18n/locale'))
 datas.append(('GPT_SoVITS/text', 'text'))
 datas.extend(collect_data_files('jieba_fast'))
+datas.extend(collect_data_files('g2p_en'))
+datas.extend(collect_data_files('wordsegment'))
 
 a = Analysis(
     ['gui_server.py'],
     pathex=['GPT_SoVITS'],
     binaries=[],
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=[
+        'uvicorn.lifespan.off','uvicorn.lifespan.on','uvicorn.lifespan',
+'uvicorn.protocols.websockets.auto','uvicorn.protocols.websockets.wsproto_impl',
+'uvicorn.protocols.websockets_impl','uvicorn.protocols.http.auto',
+'uvicorn.protocols.http.h11_impl','uvicorn.protocols.http.httptools_impl',
+'uvicorn.protocols.websockets','uvicorn.protocols.http','uvicorn.protocols',
+'uvicorn.loops.auto','uvicorn.loops.asyncio','uvicorn.loops.uvloop','uvicorn.loops',
+'uvicorn.logging', 'gui_server', 'wordsegment', 'g2p_en'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -21,6 +30,7 @@ a = Analysis(
     noarchive=False,
     module_collection_mode={
         'gradio': 'py',
+        'inflect': 'pyz+py'
     }
 )
 pyz = PYZ(a.pure)
@@ -53,3 +63,4 @@ coll = COLLECT(
 )
 import os
 import shutil
+shutil.copytree('models', 'dist/gptsovits_server/models')
