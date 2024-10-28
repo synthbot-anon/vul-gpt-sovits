@@ -9,6 +9,9 @@ Features:
 - Add models from a huggingface repo in the GUI
 - Parallelized repeated generations 
 - Rich audio preview with drag and drop
+- Experimental custom ARPAbet support (english only)
+  * Type in ARPAbet in curly braces, e.g. `{D IH0 S P EH1 N S ER0}`
+  * Vowel stress numbers are required.
 - Bugfixes to the original repo (invalidating cache for change in prompt lang)
 
 # Instructions 
