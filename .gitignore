@@ -25,3 +25,4 @@ outputs
 effusive_gui_config.yaml
 build
 dist
+models
