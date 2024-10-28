@@ -20,7 +20,7 @@ The pyinstaller build uses approx. 10 GB of disk space including pretrained mode
 
 ### Use from source (other) (recommend python=3.10)
 1. Clone the repository. 
-  * Set up a conda environment if you wish: `conda env create -n GPTSovitsClient python=3.10`
+  * Set up a conda environment if you wish: `conda create -n GPTSovitsClient python=3.10`
     - Activate the environment: `conda activate GPTSovitsClient`
   * Or set up a venv if you wish: `python -m venv GPTSovitsClient`
     - Activate the environment (Unix/MacOS): `source GPTSovitsClient/bin/activate`
