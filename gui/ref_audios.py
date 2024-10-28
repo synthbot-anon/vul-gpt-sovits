@@ -204,7 +204,8 @@ class RefAudiosFrame(QGroupBox):
         self.lay.addWidget(bf4)
 
         self.sumdur = QLabel("Sum of durations: 0.0")
-        #self.lay.addWidget(self.sumdur)
+        self.sumdur.setWordWrap(True)
+        self.lay.addWidget(self.sumdur)
 
         core.databaseSelfUpdate.connect(self.shouldBuildTable)
 
@@ -314,16 +315,20 @@ class RefAudiosFrame(QGroupBox):
         else:
             self.primary_display.setText(
                 f"Primary selected audio: ")
-        checkedAudio = [
-            ra for ra in self.ras if ra.audio_hash in self.auxSelectedSet]
-        sumdur = 0.0
-        for ra in checkedAudio:
-            sumdur += ra.duration
-        if sumdur < 3 or sumdur > 10:
-            text = f"Sum of durations: {sumdur:.2f} s (!) (< 3 or > 10)"
-            self.sumdur.setText(text)
+
+        if len(primaryRefAudio):
+            sumdur = primaryRefAudio[0].duration
+            if sumdur < 3:
+                text = f"Duration: {sumdur:.2f} s (< 3). Warning - Short reference audio can have adverse effects on character resemblance and audio quality"
+                self.sumdur.setText(text)
+            elif sumdur > 10:
+                text = f"Duration: {sumdur:.2f} s (> 10). Warning - Long reference audio can have adverse effects on pronunciation and memory usage"
+                self.sumdur.setText(text)
+            else:
+                text = f"Duration: {sumdur:.2f} s"
+                self.sumdur.setText(text)
         else:
-            text = f"Sum of durations: {sumdur:.2f} s"
+            text = f"Duration: {0.0} s"
             self.sumdur.setText(text)
         
     def build_table(self):

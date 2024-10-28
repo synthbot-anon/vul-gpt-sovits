@@ -157,9 +157,11 @@ class AudioTableView(QTableView):
         radio_button = QRadioButton()
         # A primary reference below 3 seconds or greater than 10 seconds
         # cannot be used.
-        if ra.duration is not None and (
-            ra.duration < 3.0 or ra.duration > 10.0):
-            radio_button.setEnabled(False)
+
+        # if ra.duration is not None and (
+            # ra.duration < 3.0 or ra.duration > 10.0):
+            # radio_button.setEnabled(False)
+
         if ra.audio_hash in self.primaryRefHash:
             radio_button.setChecked(True)
         def update_primary_hash(state : bool, audio_hash : str):

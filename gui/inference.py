@@ -444,6 +444,8 @@ class InferenceFrame(QGroupBox):
         self.core.tts_pipeline : TTS
         # The TTS pipeline's stop is more a "suggestion" than rules.
         self.core.tts_pipeline.stop()
+        self.gen_button.setEnabled(True)
+        self.stopwatch.stop_reset_stopwatch()
 
     def handle_inference_output(self, info : dict, idx : int, audio : list):
         # We don't expect these to be sent out of order, so we can
