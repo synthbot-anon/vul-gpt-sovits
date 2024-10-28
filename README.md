@@ -20,10 +20,9 @@ The pyinstaller build uses approx. 10 GB of disk space including pretrained mode
 
 ### Use from source (other) (recommend python=3.10)
 1. Clone the repository. Set up a conda environment if you wish
-2. Install `ffmpeg` (see the original repo's instructions further below for installing on different OSes!)
-3. Install pytorch 2.3.0: `pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu118`
-4. In a venv or conda environment install `requirements.txt` and `requirements_client.txt`
-5. Then launch the server with `python gui_client.py`. The client will automatically download the necessary pretrained models for inference on startup.
+2. Install pytorch 2.3.0: `pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu118`
+3. In a venv or conda environment install `requirements.txt` and `requirements_client.txt`
+4. Then launch the server with `python gui_client.py`. The client will automatically download the necessary pretrained models for inference on startup.
 
 ## Usage
 - **Starting the program.** Be patient -- there's a lot of Python in there! It takes me minimum 10 seconds to start seeing console output.
