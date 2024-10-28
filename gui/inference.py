@@ -510,8 +510,7 @@ class InferenceFrame(QGroupBox):
             info['seed'] = int(self.sd_f_edit.text())
 
         if len(aux_hashes):
-            info['aux_ref_audio_paths'] = aux_hashes
-
+            info['aux_ref_audio_paths'] = aux_paths
         info['prompt_text'] = ra.utterance
         info['characters'] = ra.character
 
