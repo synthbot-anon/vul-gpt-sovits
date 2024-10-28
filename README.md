@@ -73,7 +73,7 @@ The words to be spoken can be filled out under **Text prompt**. When ready to su
   * GPT-SoVITS only uses as many batches as it needs--so with a small number of batches and a low number of repetitions, your memory usage may not reflect the maximum amount of memory usage possible for a particular batch size.
 
 # Building
-A conda environment appropriately set up to run the client, plus pyinstaller, on Windows, should allow you to run `pyinstaller gptsovits_client.spec` which should reproduce the pyinstaller.
+A conda environment appropriately set up to run the client, plus pyinstaller, on Windows, should allow you to run `pyinstaller gptsovits_client.spec` which should reproduce the pyinstaller (minus bundled reference audios and models).
 
 # FAQ
 * **Why can't I select some files as primary references?** GPT-SoVITS disallows using audios shorter than 3 seconds or longer than 10 seconds as a primary reference audio (not sure why). You can, however, work around this by stitching together/cutting audio files in an audio editor.
