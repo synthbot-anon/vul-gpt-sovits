@@ -1,7 +1,7 @@
 # What is this?
 Implements a GUI for GPT-SoVITS.
 
-![Overall GUI](/../<standalone_gui>/docs/screenshots/overall.png)
+![Overall GUI](/../standalone_gui/docs/screenshots/overall.png)
 
 Features:
 - Reference audio management
