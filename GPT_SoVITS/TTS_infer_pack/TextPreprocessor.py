@@ -12,6 +12,7 @@ from text import chinese
 from typing import Dict, List, Tuple
 from text.cleaner import clean_text
 from text import cleaned_text_to_sequence
+from text.custom_arpabet import CustomArpabetProcessor
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 from TTS_infer_pack.text_segmentation_method import split_big_text, splits, get_method as get_seg_method
 
@@ -121,7 +122,8 @@ class TextPreprocessor:
             language = language.replace("all_","")
             if language == "en":
                 LangSegment.setfilters(["en"])
-                formattext = " ".join(tmp["text"] for tmp in LangSegment.getTexts(text))
+                #formattext = " ".join(tmp["text"] for tmp in LangSegment.getTexts(text))
+                formattext = CustomArpabetProcessor.segment(LangSegment, text)
             else:
                 # 因无法区别中日韩文汉字,以用户输入为准
                 formattext = text
