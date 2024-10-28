@@ -189,6 +189,7 @@ class RefAudiosFrame(QGroupBox):
 
         self.primary_display = QLabel("Primary selected audio: ")
         self.primary_display.setFixedWidth(600)
+        self.primary_display.setWordWrap(True)
         bf4lay.addWidget(self.primary_display)
         self.show_select = QCheckBox("Show only selected")
         bf4lay.addWidget(self.show_select)
