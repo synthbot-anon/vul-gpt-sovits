@@ -84,7 +84,6 @@ The words to be spoken can be filled out under **Text prompt**. When ready to su
 A conda environment appropriately set up to run the client, plus pyinstaller, on Windows, should allow you to run `pyinstaller gptsovits_client.spec` which should reproduce the pyinstaller (minus bundled reference audios and models).
 
 # FAQ
-* **Why can't I select some files as primary references?** GPT-SoVITS disallows using audios shorter than 3 seconds or longer than 10 seconds as a primary reference audio (not sure why). You can, however, work around this by stitching together/cutting audio files in an audio editor.
 * **Why is Twilight Sparkle underneath the drag and drop cursor?** Because PyQt5 starts screaming into the console if the drag pixmap is nothing.
 * **Why am I running out of memory?** Very long sentences and using too high of a batch size can both increase your VRAM usage; consider lowering them according to your available GPU resources.
   - **Text split** applies directly to this. For example, "batch every 4 sentences" will result in longer items per batch increasing overall VRAM usage.
