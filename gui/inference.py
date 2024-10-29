@@ -14,6 +14,7 @@ from gui.util import qshrink, sanitize_filename, get_available_filename
 from gui.audio_preview import RichAudioPreviewWidget
 from gui.database import RefAudio, GPTSovitsDatabase
 from gui.stopwatch import Stopwatch
+from gui.arpabet_syntax import ArpabetSyntaxHighlighter
 from TTS_infer_pack.TTS import TTS, TTS_Config
 from pathlib import Path
 from logging import error
@@ -125,6 +126,9 @@ class InferenceFrame(QGroupBox):
         lay1.addWidget(pe_box)
         pelay = QVBoxLayout(pe_box)
         self.prompt_edit = QPlainTextEdit()
+        self.prompt_edit.highlighter = ArpabetSyntaxHighlighter(
+            self.prompt_edit.document()
+        )
         self.prompt_edit.setMinimumWidth(300)
         pelay.addWidget(self.prompt_edit)
         pe_box.setFixedHeight(120)
