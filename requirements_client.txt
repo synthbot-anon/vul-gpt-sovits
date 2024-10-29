@@ -3,7 +3,6 @@ huggingface_hub==0.24.6
 numpy
 omegaconf==2.2.0
 peewee==3.17.7
-pydub==0.25.1
 PyQt5==5.15.11
 rapidfuzz==3.5.2
 soundfile==0.12.1

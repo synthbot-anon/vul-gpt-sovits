@@ -22,7 +22,6 @@ import soundfile as sf
 import hashlib
 import os
 import time
-from pydub import AudioSegment
 
 #logging.basicConfig(
 #    level = logging.DEBUG
@@ -62,14 +61,14 @@ class RefAudiosContext:
         assert local_filepath.exists()
         
         sha256_hash = hashlib.sha256()
+
+        audio, sr = sf.read(local_filepath)
+        duration_seconds = len(audio) / sr
+
         with open(local_filepath, 'rb') as audio_file:
-            audio_segment = AudioSegment.from_file(audio_file)
-            audio_file.seek(0)
             for byte_block in iter(lambda: audio_file.read(4096), b""):
                 sha256_hash.update(byte_block)
 
-        duration_seconds = len(audio_segment) / 1000.0
-                
         # If this is a PPP-style audio name,
         # we can try roughly parsing it for extra data
         ppp_meta = ppp_parse(str(local_filepath))
