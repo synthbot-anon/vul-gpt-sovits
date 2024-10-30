@@ -187,7 +187,7 @@ class RefAudiosFrame(QGroupBox):
         qshrink(bf4lay)
 
         self.primary_display = QLabel("Primary selected audio: ")
-        self.primary_display.setFixedWidth(600)
+        # self.primary_display.setFixedWidth(600)
         self.primary_display.setWordWrap(True)
         bf4lay.addWidget(self.primary_display)
         self.show_select = QCheckBox("Show only selected")
@@ -376,37 +376,38 @@ class RefAudiosFrame(QGroupBox):
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.table.setSelectionMode(QTableView.ExtendedSelection)
 
-        self.table.setMinimumWidth(900)
-        self.table.setMinimumHeight(400)
+        # self.table.setMinimumWidth(900)
+        self.table.setMinimumHeight(200)
         
         self.table.setColumnWidth(FILEPATH_COL, 80)
-        self.table.setColumnWidth(CHARACTER_COL, 120)
+        self.table.setColumnWidth(CHARACTER_COL, 80)
         self.table.setColumnWidth(EMOTION_COL, 80)
         self.table.setColumnWidth(DURATION_COL, 80)
-        self.table.setColumnWidth(UTTERANCE_COL, 120)
+        self.table.setColumnWidth(UTTERANCE_COL, 200)
         self.table.setColumnWidth(AUDIOHASH_COL, 60)
         self.table.setColumnWidth(PRIMARY_CHECKBOX_COL, 80)
         self.table.setColumnWidth(AUX_CHECKBOX_COL, 60)
         self.table.setColumnWidth(PREVIEW_COL, 60)
         
         self.table.horizontalHeader().setSectionResizeMode(FILEPATH_COL,
-            QHeaderView.Fixed)
+            QHeaderView.Interactive)
         self.table.horizontalHeader().setSectionResizeMode(CHARACTER_COL,
-            QHeaderView.Fixed)
+            QHeaderView.Interactive)
         self.table.horizontalHeader().setSectionResizeMode(EMOTION_COL,
-            QHeaderView.Fixed)
+            QHeaderView.Interactive)
         self.table.horizontalHeader().setSectionResizeMode(DURATION_COL,
-            QHeaderView.Fixed)
+            QHeaderView.Interactive)
         self.table.horizontalHeader().setSectionResizeMode(UTTERANCE_COL,
-            QHeaderView.Stretch)
+            QHeaderView.Interactive)
         self.table.horizontalHeader().setSectionResizeMode(AUDIOHASH_COL,
-            QHeaderView.Fixed)
+            QHeaderView.Interactive)
         self.table.horizontalHeader().setSectionResizeMode(PRIMARY_CHECKBOX_COL,
             QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(AUX_CHECKBOX_COL,
             QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(PREVIEW_COL,
             QHeaderView.Fixed)
+        self.table.horizontalHeader().setStretchLastSection(True)
 
         for i,ra in enumerate(ras):
             self.rowToHashMap[i] = ra.audio_hash

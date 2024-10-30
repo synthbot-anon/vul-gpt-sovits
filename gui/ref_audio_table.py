@@ -202,6 +202,10 @@ class AudioTableView(QTableView):
             if row not in visible_rows:
                 self.remove_custom_widgets(row)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.on_scroll()
+
     def get_visible_rows(self):
         """Determine which rows are currently visible in the viewport."""
         index_top = self.indexAt(self.rect().topLeft())  # Get the top visible index

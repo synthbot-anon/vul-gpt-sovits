@@ -85,7 +85,7 @@ class ModelDownload(QDialog):
         cb_frame = QFrame()
         lcb = QHBoxLayout(cb_frame)
         self.models_cb = QComboBox()
-        self.models_cb.setFixedWidth(300)
+        #self.models_cb.setFixedWidth(300)
         lcb.addWidget(QLabel("Models: "))
         lcb.addWidget(self.models_cb)
 

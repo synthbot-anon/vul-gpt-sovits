@@ -129,7 +129,6 @@ class InferenceFrame(QGroupBox):
         self.prompt_edit.highlighter = ArpabetSyntaxHighlighter(
             self.prompt_edit.document()
         )
-        self.prompt_edit.setMinimumWidth(300)
         pelay.addWidget(self.prompt_edit)
         pe_box.setFixedHeight(120)
 
@@ -393,8 +392,7 @@ class InferenceFrame(QGroupBox):
         stf = QFrame()
         stl = QHBoxLayout(stf)
         qshrink(stl)
-        self.status_label = QLabel("Status")
-        self.status_label.setFixedWidth(400)
+        self.status_label : QLabel = QLabel("Status")
         self.status_label.setWordWrap(True)
         self.stopwatch = Stopwatch()
         stl.addWidget(self.status_label)
