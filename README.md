@@ -15,7 +15,7 @@ Features:
 - Bugfixes to the original repo (invalidating cache for change in prompt lang)
 
 # Instructions 
-An NVIDIA GPU is recommended. You can get away with 4 GB VRAM but higher is better. Not tested with CPU-only inference.
+An NVIDIA GPU is recommended. You can get away with 4 GB VRAM but higher is better. CPU-only inference is possible, but slow (~9x slower).
 
 ## Installation
 ### ffmpeg
