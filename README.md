@@ -62,6 +62,7 @@ The pyinstaller build uses approx. 10 GB of disk space including pretrained mode
 - On Linux: The GUI uses the PyQt5 multimedia library and gstreamer which may not be installed on your distro.
   - On Ubuntu or other apt distros, try `apt install libqt5multimedia5 libgstreamer1.0-dev libgstreamer-plugins-bad1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev`
   - If not using apt, try to find and install the equivalent packages for your distro.
+- `RuntimeError: Failed to load Audio`. This is because ffmpeg could not be detected on your system. Ensure that ffmpeg is installed according to the provided instructions above.
 
 ## DPI scaling
 - If you are using a high DPI monitor, run the program first. A config file called `effusive_gui_config.yaml` will appear.
