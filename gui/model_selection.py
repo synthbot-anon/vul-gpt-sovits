@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout, QHBoxLayout, 
     QLabel, QComboBox, QFrame, QPushButton, QStyle)
 from PyQt5.QtCore import (QObject, QRunnable, QThreadPool, pyqtSignal, Qt)
+from gui.compact_combo_box import CompactComboBox
 from gui.core import GPTSovitsCore, now_dir
 from gui.util import qshrink
 from gui.stopwatch import Stopwatch
@@ -98,15 +99,15 @@ class ModelSelection(QGroupBox):
         self.load_button = load_button
         l1.addWidget(sync)
 
-        self.sovits_weights_cb = QComboBox()
+        self.sovits_weights_cb = CompactComboBox(160)
         self.sovits_weights_cb.view().setTextElideMode(
             Qt.ElideLeft)
         #self.sovits_weights_cb.setMaximumWidth(100)
         self.sovits_weights_lay.addWidget(self.sovits_weights_cb)
-        self.gpt_weights_cb = QComboBox()
+        self.gpt_weights_cb = CompactComboBox(160)
         #self.gpt_weights_cb.setMaximumWidth(100)
         self.gpt_weights_lay.addWidget(self.gpt_weights_cb)
-        self.folder_weights_cb = QComboBox()
+        self.folder_weights_cb = CompactComboBox(160)
         #self.folder_weights_cb.setMaximumWidth(100)
         self.folder_weights_lay.addWidget(self.folder_weights_cb)
 
