@@ -15,6 +15,7 @@ from gui.audio_preview import RichAudioPreviewWidget
 from gui.database import RefAudio, GPTSovitsDatabase
 from gui.stopwatch import Stopwatch
 from gui.arpabet_syntax import ArpabetSyntaxHighlighter
+from gui.compact_combo_box import CompactComboBox
 from TTS_infer_pack.TTS import TTS, TTS_Config
 from pathlib import Path
 from logging import error
@@ -143,7 +144,7 @@ class InferenceFrame(QGroupBox):
         prompt_lang_f = QFrame()
         prompt_lang_f_lay = QHBoxLayout(prompt_lang_f)
         qshrink(prompt_lang_f_lay)
-        prompt_lang = QComboBox()
+        prompt_lang = CompactComboBox(width=60)
         prompt_lang.addItem(
             "English", userData="en")
         prompt_lang.addItem(
@@ -163,7 +164,7 @@ class InferenceFrame(QGroupBox):
         ref_lang_f = QFrame()
         ref_lang_f_lay = QHBoxLayout(ref_lang_f)
         qshrink(ref_lang_f_lay)
-        ref_lang = QComboBox()
+        ref_lang = CompactComboBox(width=60)
         ref_lang.addItem(
             "English", userData="en")
         ref_lang.addItem(
@@ -196,7 +197,7 @@ class InferenceFrame(QGroupBox):
         text_split_f = QFrame()
         text_split_f_lay = QHBoxLayout(text_split_f)
         qshrink(text_split_f_lay)
-        text_split = QComboBox()
+        text_split = CompactComboBox(80)
         text_split.addItem(
             "Do not batch", userData="cut0")
         text_split.addItem(
