@@ -59,6 +59,7 @@ class GPTSovitsCore(QObject):
         local_dir = "GPT_SoVITS/pretrained_models"
         # No idea how to check if this is already downloaded
         nltk.download('averaged_perceptron_tagger')
+        nltk.download('averaged_perceptron_tagger_eng')
         if not os.path.exists("GPT_SoVITS/pretrained_models/chinese-hubert-base"):
             huggingface_hub.hf_hub_download(repo_id=repo_id, filename="chinese-hubert-base/config.json", local_dir=local_dir)
             huggingface_hub.hf_hub_download(repo_id=repo_id, filename="chinese-hubert-base/preprocessor_config.json", local_dir=local_dir)
