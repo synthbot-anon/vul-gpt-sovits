@@ -1,8 +1,9 @@
 from PyQt5.QtCore import (
-    QAbstractTableModel, Qt, QModelIndex, QThreadPool, pyqtSignal)
+    QAbstractTableModel, Qt, QModelIndex, QThreadPool, pyqtSignal,
+    QSize)
 from PyQt5.QtWidgets import (
     QTableView, QCheckBox, QLabel, QStyledItemDelegate, QWidget,
-    QAbstractItemDelegate, QRadioButton)
+    QAbstractItemDelegate, QRadioButton, QSizePolicy)
 from gui.database import RefAudio
 from gui.audio_preview import SmallAudioPreviewWidget
 from functools import partial
@@ -141,6 +142,11 @@ class AudioTableView(QTableView):
         self.verticalScrollBar().valueChanged.connect(self.on_scroll)
         self.thread_pool = QThreadPool()
         self.on_scroll()
+
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def sizeHint(self):
+        return QSize(1200, 400)
 
     def create_custom_widgets(self, row):
         ra = self.ras[row]

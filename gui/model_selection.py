@@ -99,15 +99,15 @@ class ModelSelection(QGroupBox):
         self.load_button = load_button
         l1.addWidget(sync)
 
-        self.sovits_weights_cb = CompactComboBox(160)
+        self.sovits_weights_cb = CompactComboBox(80)
         self.sovits_weights_cb.view().setTextElideMode(
             Qt.ElideLeft)
         #self.sovits_weights_cb.setMaximumWidth(100)
         self.sovits_weights_lay.addWidget(self.sovits_weights_cb)
-        self.gpt_weights_cb = CompactComboBox(160)
+        self.gpt_weights_cb = CompactComboBox(80)
         #self.gpt_weights_cb.setMaximumWidth(100)
         self.gpt_weights_lay.addWidget(self.gpt_weights_cb)
-        self.folder_weights_cb = CompactComboBox(160)
+        self.folder_weights_cb = CompactComboBox(80)
         #self.folder_weights_cb.setMaximumWidth(100)
         self.folder_weights_lay.addWidget(self.folder_weights_cb)
 

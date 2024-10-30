@@ -43,6 +43,9 @@ class GPTSoVITSClient(QMainWindow):
             dialog = ModelDownload(core=self.core, parent=self)
             dialog.exec_()
 
+        # Attempt to resize larger
+        self.resize(1500, 1000)
+
         self.model_download = QAction("Add model", self)
         self.model_download.triggered.connect(model_dialog)
         self.model_download.setEnabled(True)
