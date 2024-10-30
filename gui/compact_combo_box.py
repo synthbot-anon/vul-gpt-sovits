@@ -6,7 +6,6 @@ class CompactComboBox(QComboBox):
         super().__init__()
         self._width = width
         # Add items to combo box
-        self.addItems(["Short", "A bit longer", "This is a very long item"])
 
     def minimumSizeHint(self):
         # Set the minimum visible size for the combo box
