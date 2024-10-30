@@ -31,9 +31,12 @@ The pyinstaller build uses approx. 10 GB of disk space including pretrained mode
 2. Install pytorch 2.3.0: `pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu118`
 3. `pip install -r requirements.txt -r requirements_client.txt`
 4. Then launch the server with `python gui_client.py`. The client will automatically download the necessary pretrained models for inference on startup.
-- This uses the PyQt5 multimedia library which may not be installed on Linux.
-  - On Ubuntu or other apt distros, try `apt install libqt5multimedia5`
-  - If not using apt, try to find and install the equivalent package for your distro.
+
+### Troubleshooting
+- On Windows -- if audio playback fails mentioning `DirectShowPlayerService error`, this is a codec issue. Try installing [K-Lite Codecs](https://codecguide.com/download_kl.htm).
+- This uses the PyQt5 multimedia library and gstreamer which may not be installed on Linux.
+  - On Ubuntu or other apt distros, try `apt install libqt5multimedia5 libgstreamer1.0-dev libgstreamer-plugins-bad1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev`
+  - If not using apt, try to find and install the equivalent packages for your distro.
 
 ## Usage
 - **Starting the program.** Be patient -- there's a lot of Python in there! It takes me minimum 10 seconds to start seeing console output.
