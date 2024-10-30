@@ -18,10 +18,35 @@ Features:
 An NVIDIA GPU is recommended. You can get away with 4 GB VRAM but higher is better. Not tested with CPU-only inference.
 
 ## Installation
-### Use from pyinstaller (Windows)
-The pyinstaller build uses approx. 10 GB of disk space including pretrained models bundled with it. As this is too large for GitHub, the latest release is hosted [here](https://drive.google.com/file/d/1PZt71cOH0X7QSFRgcThTwC2_WOain7Nj/view?usp=drive_link) and can be run simply by executing `gptsovits.exe`. The client will automatically download the necessary pretrained models for inference on startup.
+### ffmpeg
+GPT-SoVITS depends on FFmpeg, which is bundled with the Windows pyinstaller. If using from source, follow the below instructions:
 
-### Use from source (other) (recommend python=3.10)
+#### Conda Users
+```bash
+conda install ffmpeg
+```
+
+#### Ubuntu/Debian Users
+```bash
+sudo apt install ffmpeg
+sudo apt install libsox-dev
+conda install -c conda-forge 'ffmpeg<7'
+```
+
+#### Windows Users
+Download and place [ffmpeg.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/ffmpeg.exe) and [ffprobe.exe](https://huggingface.co/lj1995/VoiceConversionWebUI/blob/main/ffprobe.exe) in the GPT-SoVITS root.
+
+Install [Visual Studio 2017](https://aka.ms/vs/17/release/vc_redist.x86.exe) (Korean TTS Only)
+
+#### MacOS Users
+```bash
+brew install ffmpeg
+```
+
+### From pyinstaller (Windows)
+The pyinstaller build uses approx. 10 GB of disk space including pretrained models bundled with it. As this is too large for GitHub, the latest release is hosted [here](https://drive.google.com/file/d/12JgwvkFao_h_6hHLi-VqoOrA6Lf11X4f/view?usp=drive_link) and can be run simply by executing `gptsovits.exe`. The client will automatically download the necessary pretrained models for inference on startup.
+
+### From source (other) (recommend python=3.10)
 1. Clone the repository. 
   * Set up a conda environment if you wish: `conda create -n GPTSovitsClient python=3.10`
     - Activate the environment: `conda activate GPTSovitsClient`
@@ -34,7 +59,7 @@ The pyinstaller build uses approx. 10 GB of disk space including pretrained mode
 
 ### Troubleshooting
 - On Windows -- if audio playback fails mentioning `DirectShowPlayerService error`, this is a codec issue. Try installing [K-Lite Codecs](https://codecguide.com/download_kl.htm).
-- This uses the PyQt5 multimedia library and gstreamer which may not be installed on Linux.
+- On Linux: The GUI uses the PyQt5 multimedia library and gstreamer which may not be installed on your distro.
   - On Ubuntu or other apt distros, try `apt install libqt5multimedia5 libgstreamer1.0-dev libgstreamer-plugins-bad1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev`
   - If not using apt, try to find and install the equivalent packages for your distro.
 
@@ -58,6 +83,8 @@ By default, the pyinstaller version comes "batteries included" with Mane 6 voice
 - (pyinstaller) You can also manually add "loose" models (i.e. models not coupled to any particular character) by creating `GPT_weights_v2` and `SoVITS_weights_v2` directories next to the .exe and placing the weights in those respective directories.
 
 ### Model selection
+*Note that the initial model when the GUI is first loaded is the base model, which is not finetuned on any particular characters. Download and load a more specific model for better results.*
+
 Under this section, you can select either individual weights or speaker-bundled weights (i.e. paired GPT and SoVITS weights corresponding to a particular speaker, typically downloaded using the above `Add Model` action and located in the `models` directory.). 
 
 ![Selecting models](/../standalone_gui/docs/screenshots/selectmodel.png)
