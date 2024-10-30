@@ -38,6 +38,10 @@ The pyinstaller build uses approx. 10 GB of disk space including pretrained mode
   - On Ubuntu or other apt distros, try `apt install libqt5multimedia5 libgstreamer1.0-dev libgstreamer-plugins-bad1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-good1.0-dev`
   - If not using apt, try to find and install the equivalent packages for your distro.
 
+## DPI scaling
+- If you are using a high DPI monitor, run the program first. A config file called `effusive_gui_config.yaml` will appear.
+- Set `enable_hi_dpi` to `True`.
+
 ## Usage
 - **Starting the program.** Be patient -- there's a lot of Python in there! It takes me minimum 10 seconds to start seeing console output.
 ### Adding models. 
