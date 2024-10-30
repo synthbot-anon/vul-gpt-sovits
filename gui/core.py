@@ -67,7 +67,6 @@ class GPTSovitsCore(QObject):
     def download_pretrained_models_if_not_present(self):
         repo_id = "lj1995/GPT-SoVITS"
         local_dir = "GPT_SoVITS/pretrained_models"
-        # No idea how to check if this is already downloaded
         if not GPTSovitsCore.check_resource('averaged_perceptron_tagger'):
             nltk.download('averaged_perceptron_tagger')
         if not GPTSovitsCore.check_resource('averaged_perceptron_tagger_eng'):
