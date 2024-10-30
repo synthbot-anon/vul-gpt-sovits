@@ -62,6 +62,23 @@ coll = COLLECT(
 )
 import os
 import shutil
+import httpx
 shutil.copytree('ref_audios','dist/gptsovits/ref_audios')
 shutil.copytree('models','dist/gptsovits/models')
 shutil.copy2('ts_cursor.png','dist/gptsovits/ts_cursor.png')
+
+# Download ffmpeg and ffprobe if they do not already exist
+if not os.path.exists('ffmpeg.exe'):
+    r = httpx.get("https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe?download=true")
+    r : httpx.Response
+    if r.status_code == 200:
+        with open('ffmpeg.exe', 'wb') as file:
+            file.write(r.content)
+if not os.path.exists('ffprobe.exe'):
+    r = httpx.get("https://huggingface.co/lj1995/VoiceConversionWebUI/resolve/main/ffmpeg.exe?download=true")
+    if r.status_code == 200:
+        with open('ffprobe.exe', 'wb') as file:
+            file.write(r.content)
+
+shutil.copy2('ffmpeg.exe','dist/gptsovits/ffmpeg.exe')
+shutil.copy2('ffprobe.exe','dist/gptsovits/ffprobe.exe')
