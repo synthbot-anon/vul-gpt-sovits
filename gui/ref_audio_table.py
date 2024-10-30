@@ -10,12 +10,12 @@ from functools import partial
 from logging import debug
 import time
 
-FILEPATH_COL = 0
-CHARACTER_COL = 1
-EMOTION_COL = 2
-DURATION_COL = 3
-UTTERANCE_COL = 4
-AUDIOHASH_COL = 5
+FILEPATH_COL = 1
+CHARACTER_COL = 4
+EMOTION_COL = 3
+DURATION_COL = 2
+UTTERANCE_COL = 5
+AUDIOHASH_COL = 0
 PRIMARY_CHECKBOX_COL = 6
 AUX_CHECKBOX_COL = 7
 PREVIEW_COL = 8
@@ -35,8 +35,8 @@ class AudioTableModel(QAbstractTableModel):
         ras : list[RefAudio]):
         super().__init__()
         self.ras = ras
-        self.headers = ['Filepath', 'Character', 'Emotion', 'Duration',
-            'Utterance', 'Hash', 'Primary', 'Aux', 'Play']
+        self.headers = ['Hash', 'Filepath', 'Duration', 'Emotion',
+            'Character', 'Utterance', 'Primary', 'Aux', 'Play']
 
     def rowCount(self, parent=None):
         return len(self.ras)
