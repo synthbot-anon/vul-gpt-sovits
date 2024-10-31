@@ -310,6 +310,7 @@ class MegaBrowser(QDialog):
         lay2.addWidget(QLabel("Regex search"))
         lay2.addWidget(regex_filter)
         lay1.addWidget(regex_frame)
+        regex_filter.editingFinished.connect(self.build_results_view)
 
         rebuild_button = QPushButton("Rebuild master file index")
         rebuild_button.connect(self.build_index)
