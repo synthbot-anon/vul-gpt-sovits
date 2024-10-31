@@ -300,6 +300,7 @@ class MegaBrowser(QDialog):
 
     def __init__(self, core : GPTSovitsCore, parent=None):
         super().__init__(parent)
+        self.setWindowTitle("Master File Browser")
         self.core = core
         self.new_audios_downloaded.connect(self.core.newAudiosDownloaded)
         self.index_file = self.core.cfg.master_file_index
