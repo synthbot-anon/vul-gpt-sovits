@@ -6,6 +6,7 @@ Implements a GUI for GPT-SoVITS.
 Features:
 - Reference audio management
   * Pony Preservation Project format filename parsing
+  * Builtin downloader for Clipper's Master File
 - Add models from a huggingface repo in the GUI
 - Parallelized repeated generations 
 - Rich audio preview with drag and drop
