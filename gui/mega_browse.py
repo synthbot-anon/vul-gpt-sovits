@@ -1,10 +1,11 @@
 from PyQt5.QtWidgets import (QFrame, QLineEdit, QHBoxLayout, QVBoxLayout,
-    QLabel, QDialog, QPushButton, QTableView
+    QLabel, QDialog, QPushButton, QTableView, QHeaderView, QComboBox
 )
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtCore import (pyqtSignal, QObject, QRunnable, QThreadPool, Qt)
+from PyQt5.QtCore import (pyqtSignal, QObject, QRunnable, QThreadPool, Qt, QSize)
 from gui.core import GPTSovitsCore
 from gui.stopwatch import Stopwatch
+from gui.util import qshrink
 # mega.py is not maintained anymore but the encryption/decryption functions
 # should still work.
 from mega.crypto import (base64_to_a32, base64_url_decode, decrypt_attr,
@@ -13,10 +14,10 @@ from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Util import Counter
 from pathlib import Path
-from dotenv import load_dotenv
 from logging import error
 from functools import partial
 import os
+import fnmatch
 import platform
 import sys
 import httpx
@@ -24,6 +25,8 @@ import re
 import json
 import tempfile
 import shutil
+import time
+import requests
 from typing import Tuple
 
 # https://stackoverflow.com/questions/64488709/how-can-i-list-the-contents-of-a-mega-public-folder-by-its-shared-url-using-meg
@@ -40,7 +43,7 @@ def get_nodes_in_shared_folder(root_folder: str) -> dict:
 
 def get_file_download_data(root_folder : str, file_id: str):
     data = [{"a": "g", "g": 1, "n": file_id}]
-    response = requests.post(
+    response = httpx.post(
         "https://g.api.mega.co.nz/cs",
         params = {'id': 0, 'n': root_folder},
         data=json.dumps(data)
@@ -151,13 +154,12 @@ class BuildIndexWorkerEmitters(QObject):
 
 class BuildIndexWorker(QRunnable):
     def __init__(self, master_file_index, master_file_url):
+        super().__init__()
         self.master_file_index = master_file_index
         self.master_file_url = master_file_url
         self.emitters = BuildIndexWorkerEmitters()
 
     def run(self):
-        config = self.core.config
-
         t = parse_folder_url(self.master_file_url)
         if t is None:
             self.emitters.error.emit('Invalid master file URL in config')
@@ -184,8 +186,10 @@ class BuildIndexWorker(QRunnable):
 
             with open(self.master_file_index, 'w', encoding='utf-8') as f:
                 json.dump(records, f)
+            print("Done")
             self.emitters.done.emit()
         except Exception as e:
+            print(f"Error: {e}")
             self.emitters.error.emit(str(e))
 
 class RefAudioDownloadWorkerEmitters(QObject):
@@ -196,16 +200,16 @@ class RefAudioDownloadWorker(QRunnable):
     def __init__(self,
         ref_audios_dir : str,
         master_file_url : str,
-        file_ids : str,
-        node_keys : str):
-        self.mega_handle = mega_handle
+        file_id : str,
+        node_key : str):
+        super().__init__()
         self.ref_audios_dir = ref_audios_dir
         self.master_file_url = master_file_url
-        self.file_ids = file_id
+        self.file_id = file_id
         self.node_key = node_key
+        self.emitters = RefAudioDownloadWorkerEmitters()
 
     def run(self):
-        m = self.mega_handle
         t = parse_folder_url(self.master_file_url)
         if t is None:
             self.emitters.error.emit('Invalid master file URL in config')
@@ -226,22 +230,24 @@ FILE_COL = 0
 DOWNLOAD_BTN_COL = 1
 
 class MegaTableView(QTableView):
-    def __init__(self, records : list, browser : MegaBrowser):
+    def __init__(self, records : list, browser):
         super().__init__()
 
-        self.on_scroll()
         self.visible_widgets = {}
         self.records = records
         self.browser = browser
+        self.verticalScrollBar().valueChanged.connect(self.on_scroll)
+        self.on_scroll()
 
     def sizeHint(self):
-        return QSize(1200, 400)
+        return QSize(1000, 400)
 
     def create_custom_widgets(self, row):
         record = self.records[row]
 
         download_btn = QPushButton("Download")
-        download_btn.clicked.connect(partial(browser.download_row, row))
+        download_btn.clicked.connect(
+            partial(self.browser.download_row, row))
         self.setIndexWidget(
             self.model().index(row, DOWNLOAD_BTN_COL), download_btn)
         self.visible_widgets[row] = (download_btn)
@@ -289,69 +295,130 @@ class MegaTableView(QTableView):
         return range(top_row, bottom_row + 1)
 
 class MegaBrowser(QDialog):
+    new_audios_downloaded = pyqtSignal()
+
     def __init__(self, core : GPTSovitsCore, parent=None):
         super().__init__(parent)
         self.core = core
         self.index_file = self.core.cfg.master_file_index
         self.thread_pool = QThreadPool()
 
+        self.resize(1000, 600)
+
         lay1 = QVBoxLayout(self)
-        self.status = QLabel()
-        self.status.setWordWrap(True)
-        lay1.addWidget(self.status)
-        if not Path(self.index_file).exists():
-            self.build_index()
 
         self.results_view = MegaTableView([], self)
+        results_frame = QFrame()
+        lay4 = QVBoxLayout(results_frame)
+        qshrink(lay4)
+        self.lay4 = lay4
+        lay1.addWidget(results_frame)
 
-        regex_frame = QFrame()
-        lay2 = QHBoxLayout(regex_frame)
-        regex_filter = QLineEdit()
-        lay2.addWidget(QLabel("Regex search"))
-        lay2.addWidget(regex_filter)
-        lay1.addWidget(regex_frame)
-        regex_filter.editingFinished.connect(self.build_results_view)
+        status_frame = QFrame()
+        lay3 = QHBoxLayout(status_frame)
+        qshrink(lay3)
+        self.status = QLabel()
+        lay3.addWidget(self.status)
+        self.status.setWordWrap(True)
+        lay1.addWidget(status_frame)
+
+        search_frame = QFrame()
+        lay2 = QHBoxLayout(search_frame)
+        search_filter = QLineEdit()
+        lay2.addWidget(QLabel("Glob search"))
+        lay2.addWidget(search_filter)
+        # For ~70k records this is too slow to update in realtime
+        search_button = QPushButton("Search")
+        search_button.clicked.connect(self.build_results_view)
+        lay2.addWidget(search_button)
+        lay1.addWidget(search_frame)
+        
+        self.search_filter = search_filter
+
+        lay2.addWidget(QLabel("Sort"))
+        sort_combo = QComboBox()
+        lay2.addWidget(sort_combo)
+        sort_combo.addItem("")
+        sort_combo.addItem("Length (asc.)")
+        sort_combo.addItem("Length (desc.)")
+        self.sort_combo = sort_combo
+        sort_combo.currentIndexChanged.connect(self.build_results_view)
 
         rebuild_button = QPushButton("Rebuild master file index")
-        rebuild_button.connect(self.build_index)
+        rebuild_button.clicked.connect(self.build_index)
+        self.rebuild_button = rebuild_button
+        # This is a costly operation so you shouldn't be able to trigger it
+        # by accidental key presses
+        self.rebuild_button.setDefault(False)
+        lay1.addWidget(rebuild_button)
         
         stopwatch = Stopwatch()
         self.stopwatch = stopwatch
+        lay3.addWidget(self.stopwatch)
         self.rowToRecordMap = []
         self.rowToPathMap = []
+        self.index = {}
+        if not Path(self.index_file).exists():
+            self.build_index()
+        else:
+            self.build_results_view()
 
-    def build_results_view(self):
+    def build_results_view(self, force_reload=False):
         model = QStandardItemModel()
         model : QStandardItemModel
         model.setHorizontalHeaderLabels(["File", "Download"])
+        self.results_view : MegaTableView
+        self.results_view.deleteLater()
+        t1 = time.perf_counter()
         if not Path(self.index_file).exists():
             self.results_view.setModel(model)
             return
         try:
-            with open(self.index_file, 'r', encoding='utf-8') as f:
-                index = json.load(f)
+            if (not len(self.index)) or force_reload:
+                with open(self.index_file, 'r', encoding='utf-8') as f:
+                    self.index = json.load(f)
+            index = self.index
         except Exception as e:
+            print(e)
             self.status.setText(f"Error: {e}")
         self.rowToRecordMap.clear()
         self.rowToPathMap.clear()
         i : int = 0
-        for file_name, record in index.items():
-            item = QStandardItem([file_name])
+
+        t2 = time.perf_counter()
+        file_names : list = [k for k in index.keys()]
+
+        sort = self.sort_combo.currentText()
+        if len(sort):
+            if sort == "Length (asc.)":
+                file_names.sort(key=lambda n: len(n))
+            elif sort == "Length (desc.)":
+                file_names.sort(key=lambda n: len(n), reverse=True)
+        
+        if len(self.search_filter.text()):
+            file_names = fnmatch.filter(file_names, self.search_filter.text())
+        t3 = time.perf_counter()
+
+        for file_name in file_names:
+            record = index[file_name]
+            item = QStandardItem(file_name)
             item : QStandardItem
             item.setData(record, Qt.UserRole) # file id and node key
-            try: # Regex filtering
-                if len(self.regex_filter.text()) and (
-                    re.search(self.regex_filter.text()) is None):
-                    continue
-            except re.error as e: # Ignore regex errors and just don't filter
-                pass
             model.appendRow(item)
             self.rowToRecordMap.append(record)
             self.rowToPathMap.append(file_name)
             i += 1
+        t4 = time.perf_counter()
         self.data = index
         self.results_view = MegaTableView(self.rowToPathMap, self)
         self.results_view.setModel(model)
+        self.results_view.horizontalHeader().setSectionResizeMode(
+            FILE_COL, QHeaderView.Stretch)
+        self.lay4.addWidget(self.results_view)
+
+        # print(f'load: {t2 - t1:.2f} s')
+        # print(f'filter: {t3 - t2:.2f} s')
+        # print(f'widget: {t4 - t3:.2f} s')
 
     def download_row(self, row):
         row : int
@@ -371,6 +438,7 @@ class MegaBrowser(QDialog):
             partial(handle_error, name=name))
         def handle_done(name : str):
             self.status.setText(f"Finished downloading file {name}")
+            self.new_audios_downloaded.emit()
         worker.emitters.done.connect(
             partial(handle_done, name=name))
         self.thread_pool.start(worker)
@@ -379,7 +447,7 @@ class MegaBrowser(QDialog):
         worker = BuildIndexWorker(
             self.index_file,
             self.core.cfg.master_file_url)
-        self.status.setText("Building master file index...")
+        self.status.setText("Building master file index (this can take a while)...")
         def handle_error(e: str):
             error(e)
             self.rebuild_button.setEnabled(False)
@@ -388,9 +456,11 @@ class MegaBrowser(QDialog):
         worker.emitters.error.connect(handle_error)
         def handle_done():
             self.rebuild_button.setEnabled(True)
+            self.stopwatch.stop_reset_stopwatch()
             self.status.setText(
                 f"Finished building master file index to {self.index_file}")
-        worker.emitters.error.connect(handle_done)
+            self.build_results_view(True)
+        worker.emitters.done.connect(handle_done)
         self.stopwatch.stop_reset_stopwatch()
         self.stopwatch.start_stopwatch()
         self.thread_pool.start(worker)
