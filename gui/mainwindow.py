@@ -7,6 +7,7 @@ from gui.model_selection import ModelSelection
 from gui.ref_audios import RefAudiosFrame
 from gui.model_download import ModelDownload
 from gui.inference import InferenceFrame
+from gui.mega_browse import MegaBrowser
 
 class CentralWidget(QFrame):
     def __init__(self, core: GPTSovitsCore):
@@ -50,6 +51,13 @@ class GPTSoVITSClient(QMainWindow):
         self.model_download.triggered.connect(model_dialog)
         self.model_download.setEnabled(True)
         self.toolbar.addAction(self.model_download)
+
+        self.ref_audio_download = QAction("Master file downloader", self)
+        def ref_audio_dl_dialog():
+            dialog = MegaBrowser(core=self.core, parent=self)
+            dialog.exec_()
+        self.ref_audio_download.triggered.connect(ref_audio_dl_dialog)
+        self.toolbar.addAction(self.ref_audio_download)
 
         # Central widget
         self.central_widget = CentralWidget(self.core)

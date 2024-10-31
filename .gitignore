@@ -26,3 +26,7 @@ effusive_gui_config.yaml
 build
 dist
 models
+GPTSovitsClient
+*.bat
+.env
+mega_master_file_index.json
