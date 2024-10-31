@@ -63,7 +63,26 @@ coll = COLLECT(
 import os
 import shutil
 import httpx
-shutil.copytree('ref_audios','dist/gptsovits/ref_audios')
+#shutil.copytree('ref_audios','dist/gptsovits/ref_audios')
+os.makedirs('dist/gptsovits/ref_audios')
+shutil.copy2(
+    "ref_audios/00_06_27_Rarity_Happy__Well, yes, they may look the same, but i know it's older, And that's what makes it so much more divine!.flac",
+    'dist/gptsovits/ref_audios')
+shutil.copy2(
+    "ref_audios/00_03_24_Pinkie_Happy_Noisy_There's a chance i may have missed a note or two Here or there, but i just love playing so much!.flac",
+    'dist/gptsovits/ref_audios')
+shutil.copy2(
+    "ref_audios/00_06_18_Applejack_Neutral_Noisy_Well, if your parents won't stand up for themselves, Maybe you need to stand up for them..flac",
+    'dist/gptsovits/ref_audios')
+shutil.copy2(
+    "ref_audios/00_14_11_Fluttershy_Anxious__You're ever so thoughtful to share your special bonding ritual with us but, uh..flac",
+    'dist/gptsovits/ref_audios')
+shutil.copy2(
+    "ref_audios/00_00_16_Rainbow_Neutral_Noisy_So, now that you know the elements of a good cheer, let's hear one!.flac",
+    'dist/gptsovits/ref_audios')
+shutil.copy2(
+    "ref_audios/00_01_23_Twilight_Neutral__which means you'll have the opportunity to live your dream as a wonderbolt!.flac",
+    'dist/gptsovits/ref_audios')
 shutil.copytree('models','dist/gptsovits/models')
 shutil.copy2('ts_cursor.png','dist/gptsovits/ts_cursor.png')
 
