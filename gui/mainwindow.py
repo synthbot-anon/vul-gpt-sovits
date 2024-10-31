@@ -2,6 +2,7 @@ import sys
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QFrame, QToolBar, QAction,
     QHBoxLayout)
+from PyQt5.QtCore import (QRect)
 from gui.core import GPTSovitsCore
 from gui.model_selection import ModelSelection
 from gui.ref_audios import RefAudiosFrame
@@ -10,16 +11,18 @@ from gui.inference import InferenceFrame
 from gui.mega_browse import MegaBrowser
 
 class CentralWidget(QFrame):
-    def __init__(self, core: GPTSovitsCore):
+    def __init__(self, core: GPTSovitsCore,
+        compact_mode = True):
         super().__init__()
         self.core = core
+
         l1 = QHBoxLayout(self)
 
         lf = QFrame()
         l2 = QVBoxLayout(lf)
         ms = ModelSelection(core)
         l2.addWidget(ms)
-        raf = RefAudiosFrame(core)
+        raf = RefAudiosFrame(core, compact_mode)
         l2.addWidget(raf)
 
         l1.addWidget(lf)
@@ -28,12 +31,17 @@ class CentralWidget(QFrame):
         l1.addWidget(_if)
 
 class GPTSoVITSClient(QMainWindow):
-    def __init__(self, core : GPTSovitsCore):
+    def __init__(self, core : GPTSovitsCore,
+        screen_geometry: QRect = None):
         super().__init__()
         self.setWindowTitle("GPT SoVITS GUI")
         self.show()
         
         self.core = core
+
+        self.compact_mode = True
+        if screen_geometry is not None:
+            self.compact_mode = screen_geometry.width() < 1920
 
         # Toolbar
         self.toolbar = QToolBar()
@@ -45,7 +53,7 @@ class GPTSoVITSClient(QMainWindow):
             dialog.exec_()
 
         # Attempt to resize larger
-        self.resize(1500, 1000)
+        self.resize(1600, 1000)
 
         self.model_download = QAction("Add model", self)
         self.model_download.triggered.connect(model_dialog)
@@ -60,6 +68,6 @@ class GPTSoVITSClient(QMainWindow):
         self.toolbar.addAction(self.ref_audio_download)
 
         # Central widget
-        self.central_widget = CentralWidget(self.core)
+        self.central_widget = CentralWidget(self.core, self.compact_mode)
         self.setCentralWidget(self.central_widget)
         

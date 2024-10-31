@@ -128,8 +128,10 @@ class RefAudiosContext(QObject):
 class RefAudiosFrame(QGroupBox):
     # signal(character filter, fuzzy text filter)
     shouldBuildTable = pyqtSignal()
-    def __init__(self, core : GPTSovitsCore):
+    def __init__(self, core : GPTSovitsCore,
+        compact_mode : bool = True):
         super().__init__(title="Reference Audios")
+        self.compact_mode = compact_mode
         self.setStyleSheet("QGroupBox { font: bold; }")
         def new_audios_downloaded():
             self.shouldBuildTable.emit()
@@ -391,15 +393,26 @@ class RefAudiosFrame(QGroupBox):
 
         self.table.setMinimumHeight(200)
         
-        self.table.setColumnWidth(FILEPATH_COL, 40)
-        self.table.setColumnWidth(CHARACTER_COL, 80)
-        self.table.setColumnWidth(EMOTION_COL, 80)
-        self.table.setColumnWidth(DURATION_COL, 80)
-        self.table.setColumnWidth(UTTERANCE_COL, 120)
-        self.table.setColumnWidth(AUDIOHASH_COL, 60)
-        self.table.setColumnWidth(PRIMARY_CHECKBOX_COL, 60)
-        self.table.setColumnWidth(AUX_CHECKBOX_COL, 60)
-        self.table.setColumnWidth(PREVIEW_COL, 60)
+        if self.compact_mode:
+            self.table.setColumnWidth(FILEPATH_COL, 40)
+            self.table.setColumnWidth(CHARACTER_COL, 80)
+            self.table.setColumnWidth(EMOTION_COL, 80)
+            self.table.setColumnWidth(DURATION_COL, 80)
+            self.table.setColumnWidth(UTTERANCE_COL, 120)
+            self.table.setColumnWidth(AUDIOHASH_COL, 60)
+            self.table.setColumnWidth(PRIMARY_CHECKBOX_COL, 60)
+            self.table.setColumnWidth(AUX_CHECKBOX_COL, 60)
+            self.table.setColumnWidth(PREVIEW_COL, 60)
+        else:
+            self.table.setColumnWidth(FILEPATH_COL, 80)
+            self.table.setColumnWidth(CHARACTER_COL, 100)
+            self.table.setColumnWidth(EMOTION_COL, 100)
+            self.table.setColumnWidth(DURATION_COL, 80)
+            self.table.setColumnWidth(UTTERANCE_COL, 180)
+            self.table.setColumnWidth(AUDIOHASH_COL, 60)
+            self.table.setColumnWidth(PRIMARY_CHECKBOX_COL, 80)
+            self.table.setColumnWidth(AUX_CHECKBOX_COL, 40)
+            self.table.setColumnWidth(PREVIEW_COL, 60)
         
         self.table.horizontalHeader().setSectionResizeMode(FILEPATH_COL,
             QHeaderView.Interactive)

@@ -15,6 +15,11 @@ if __name__ == '__main__':
         qdarktheme.enable_hi_dpi()
     app = QApplication(sys.argv)
     qdarktheme.setup_theme()
-    window = GPTSoVITSClient(core=core)
+
+    screen = app.primaryScreen()
+    screen_geometry = screen.geometry()
+    available_geometry = screen.availableGeometry()
+
+    window = GPTSoVITSClient(core=core, screen_geometry=screen_geometry)
     window.show()
     sys.exit(app.exec_())
