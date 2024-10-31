@@ -401,7 +401,7 @@ class RefAudiosFrame(QGroupBox):
             self.table.setColumnWidth(UTTERANCE_COL, 120)
             self.table.setColumnWidth(AUDIOHASH_COL, 60)
             self.table.setColumnWidth(PRIMARY_CHECKBOX_COL, 60)
-            self.table.setColumnWidth(AUX_CHECKBOX_COL, 60)
+            self.table.setColumnWidth(AUX_CHECKBOX_COL, 40)
             self.table.setColumnWidth(PREVIEW_COL, 60)
         else:
             self.table.setColumnWidth(FILEPATH_COL, 80)
