@@ -186,7 +186,6 @@ class BuildIndexWorker(QRunnable):
 
             with open(self.master_file_index, 'w', encoding='utf-8') as f:
                 json.dump(records, f)
-            print("Done")
             self.emitters.done.emit()
         except Exception as e:
             print(f"Error: {e}")
