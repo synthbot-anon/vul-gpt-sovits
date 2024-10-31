@@ -47,6 +47,10 @@ class GPTSovitsCore(QObject):
             self.cfg = OmegaConf.create(default_config)
         else:
             self.cfg = OmegaConf.load(DEFAULT_CONFIG_PATH)
+
+        # Fill in missing keys
+        self.cfg = OmegaConf.merge(OmegaConf.create(default_config),
+            self.cfg)
         self.write_config()
         self.database = GPTSovitsDatabase(db_file=CLIENT_DB_FILE)
         self.tts_config, self.tts_pipeline = self.init_pipeline()
