@@ -436,11 +436,15 @@ class MegaBrowser(QDialog):
         def handle_error(e: str, name : str):
             error(e)
             self.status.setText(f"Failed to download file {name}")
+            self.stopwatch.stop_reset_stopwatch()
         worker.emitters.error.connect(
             partial(handle_error, name=name))
         def handle_done(name : str):
             self.status.setText(f"Finished downloading file {name}")
+            self.stopwatch.stop_reset_stopwatch()
             self.new_audios_downloaded.emit()
+        self.stopwatch.stop_reset_stopwatch()
+        self.stopwatch.start_stopwatch()
         worker.emitters.done.connect(
             partial(handle_done, name=name))
         self.thread_pool.start(worker)

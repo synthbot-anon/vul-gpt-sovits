@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QTableView,
     QHeaderView, QCheckBox, QPushButton, QFrame, QHBoxLayout,
     QLabel, QLineEdit, QComboBox)
-from PyQt5.QtCore import pyqtSignal, Qt, QSize
+from PyQt5.QtCore import pyqtSignal, Qt, QSize, QObject
 from gui.core import GPTSovitsCore
 from gui.database import GPTSovitsDatabase, CLIENT_DB_FILE, RefAudio
 from gui.util import ppp_parse, AUDIO_EXTENSIONS, qshrink
@@ -27,11 +27,19 @@ import time
 #    level = logging.DEBUG
 #)
 
-class RefAudiosContext:
+class RefAudiosContext(QObject):
+    newAudiosDownloaded = pyqtSignal()
     def __init__(self, core : GPTSovitsCore):
+        super().__init__()
         self.core = core
         self.database = core.database
-        self.core.newAudiosDownloaded.connect(self.autoload_from_dir)
+        def new_audios_downloaded():
+            self.autoload_from_dir()
+            self.database.integrity_update()
+            self.newAudiosDownloaded.emit()
+            # ra : RefAudio
+            # print([ra.utterance for ra in self.database.list_ref_audio()])
+        self.core.newAudiosDownloaded.connect(new_audios_downloaded)
         self.autoload_from_dir()
         
     def autoload_from_dir(self):
@@ -123,8 +131,11 @@ class RefAudiosFrame(QGroupBox):
     def __init__(self, core : GPTSovitsCore):
         super().__init__(title="Reference Audios")
         self.setStyleSheet("QGroupBox { font: bold; }")
-        core.newAudiosDownloaded.connect(self.shouldBuildTable)
+        def new_audios_downloaded():
+            self.shouldBuildTable.emit()
+            self.build_character_filter()
         self.context = RefAudiosContext(core)
+        self.context.newAudiosDownloaded.connect(new_audios_downloaded)
         self.lay = QVBoxLayout(self)
         self.table = None
         
