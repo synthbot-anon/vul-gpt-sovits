@@ -501,6 +501,7 @@ class InferenceFrame(QGroupBox):
             self.warn("Warning: Cannot infer an empty prompt.")
             return
 
+
         primaryRefHash = list(self.core.primaryRefHash)[0]
         aux_hashes = [h for h in self.core.auxSelectedSet]
         aux_hashes.sort()
@@ -520,7 +521,15 @@ class InferenceFrame(QGroupBox):
         info['characters'] = ra.character
 
         r: RefAudio
-        self.warn("Sent generation request")
+
+        tts_pipeline = self.core.tts_pipeline
+        if ("gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt" in
+            tts_pipeline.configs.t2s_weights_path) or ("gsv-v2final-pretrained/s2G2333k.pth"
+                in tts_pipeline.configs.vits_weights_path):
+            self.warn("Warning: You may be inferring with the base (non-finetuned) model")
+        else:
+            self.warn("Sent generation request")
+
         self.resultsReady.emit(False)
         worker = InferenceWorker(
             info=info,
