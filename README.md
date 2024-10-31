@@ -94,7 +94,7 @@ Under this section, you can select either individual weights or speaker-bundled 
 - You can refresh the lists of available models from your filesystem by clicking `Refresh available models`.
 
 ### Reference audios
-GPT-SoVITS accepts reference audio clips which can be used to control the intonation and timbre of the resulting generated speech. The Reference Audios section allows for the inputting, labeling, organization, and selection of reference audio for your generations.
+GPT-SoVITS accepts reference audio clips which can be used to control the intonation and timbre of the resulting generated speech. The Reference Audios section allows for the inputting, labeling, organization, and selection of reference audio for your generations. If you wish to download reference audio clips from Clipper's Master File, click the `Master file downloader` option at the top of the screen (see section `Master File Downloader` for more info)
 
 ![Reference audios](/../standalone_gui/docs/screenshots/refaudios.png)
 
@@ -117,6 +117,14 @@ The words to be spoken can be filled out under **Text prompt**. When ready to su
   * Setting a fixed seed for multiple repetitions is pointless (they will all be the same).
 - A notable parameter for controlling memory usage is **batch size**. Higher batch sizes will result in higher maximum memory usage.
   * GPT-SoVITS only uses as many batches as it needs--so with a small number of batches and a low number of repetitions, your memory usage may not reflect the maximum amount of memory usage possible for a particular batch size.
+
+### Master file downloader
+The Master file downloader offers a basic interface to search and download reference audio files from Clipper's Master File. To do this it must first build an index of the available files; depending on network speed this can take anywhere from 20 seconds to multiple minutes.
+
+![Master file downloader](/../standalone_gui/docs/screenshots/masterfile.png)
+
+The `Glob search` field accepts glob-style filename patterns, i.e. `*_Rarity_*`. `Sort`
+allows you to sort by file length. `Rebuild master file index` can be used to rebuild the index, which can be useful if the Master File is updated in the future.
 
 # Building
 A conda environment appropriately set up to run the client, plus pyinstaller, on Windows, should allow you to run `pyinstaller gptsovits_client.spec` which should reproduce the pyinstaller (minus bundled reference audios and models).
