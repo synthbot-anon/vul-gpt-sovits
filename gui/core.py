@@ -36,6 +36,7 @@ class GPTSovitsCore(QObject):
     modelsReady = pyqtSignal(bool)
     databaseSelfUpdate = pyqtSignal()
     newModelsAvailable = pyqtSignal()
+    newAudiosDownloaded = pyqtSignal()
 
     def __init__(self):
         super().__init__()

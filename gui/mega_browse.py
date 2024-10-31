@@ -223,6 +223,7 @@ class RefAudioDownloadWorker(QRunnable):
                 file_data=file_data,
                 base64_node_key=self.node_key,
                 dest_path=self.ref_audios_dir)
+            self.emitters.done.emit()
         except Exception as e:
             self.emitters.error.emit(str(e))
 
@@ -300,6 +301,7 @@ class MegaBrowser(QDialog):
     def __init__(self, core : GPTSovitsCore, parent=None):
         super().__init__(parent)
         self.core = core
+        self.new_audios_downloaded.connect(self.core.newAudiosDownloaded)
         self.index_file = self.core.cfg.master_file_index
         self.thread_pool = QThreadPool()
 

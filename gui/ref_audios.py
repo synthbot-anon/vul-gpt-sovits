@@ -31,6 +31,7 @@ class RefAudiosContext:
     def __init__(self, core : GPTSovitsCore):
         self.core = core
         self.database = core.database
+        self.core.newAudiosDownloaded.connect(self.autoload_from_dir)
         self.autoload_from_dir()
         
     def autoload_from_dir(self):
@@ -122,6 +123,7 @@ class RefAudiosFrame(QGroupBox):
     def __init__(self, core : GPTSovitsCore):
         super().__init__(title="Reference Audios")
         self.setStyleSheet("QGroupBox { font: bold; }")
+        core.newAudiosDownloaded.connect(self.shouldBuildTable)
         self.context = RefAudiosContext(core)
         self.lay = QVBoxLayout(self)
         self.table = None
