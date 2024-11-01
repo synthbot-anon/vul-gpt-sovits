@@ -102,7 +102,7 @@ GPT-SoVITS accepts reference audio clips which can be used to control the intona
 - **One primary reference audio must be selected for generation.** The primary reference audio tends to control more overall pitch and intonation over timbre, while the aux reference audios have more control over timbre.
 - All other editable fields and filters are purely for organization purposes.
 - Audio following the PPP dataset naming format, e.g. `00_03_24_Pinkie_Happy_Noisy_There's a chance i may have missed a note or two Here or there, but i just love playing so much!.flac`, will automatically have their data fields filled out by parsing the file name.
-- (pyinstaller) The pyinstaller build, in addition to the Mane 6 models, also comes with corresponding [reference audios](https://drive.google.com/file/d/1RfikMCwsACLKLlfgwv-zCqVd6LWCF4aZ/view?usp=drive_link) that can produce reasonable quality generations.
+- (pyinstaller) The pyinstaller build, in addition to the Mane 6 models, also comes with corresponding [reference audios](https://drive.google.com/file/d/1EljbxeUckYATH269utj7q1T-8oKcPhte/view?usp=drive_link) that can produce reasonable quality generations.
 
 ### Inference
 The words to be spoken can be filled out under **Text prompt**. When ready to submit, click the **Generate** button to begin generation. Generations will appear under the **Generations** section, which can be previewed. In addition, you can drag and drop the resulting generated audio files from the play button icon into other programs.
