@@ -459,7 +459,9 @@ class InferenceFrame(QGroupBox):
         utterance = info['text']
         characters : str = info['characters']
         output_fn = sanitize_filename(
-            characters+'_'+utterance, max_length=50) + '.flac'
+            characters if len(characters) > 0 else ''
+            +'_'
+            +(utterance if len(utterance) > 0 else 'empty_utterance'), max_length=50) + '.flac'
         output_path = Path(self.core.cfg.outputs_dir) / output_fn
         final_fn = get_available_filename(str(output_path))
         if not Path(self.core.cfg.outputs_dir).exists():
