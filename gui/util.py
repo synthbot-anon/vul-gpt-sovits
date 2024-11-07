@@ -30,7 +30,7 @@ def get_available_filename(filename):
 
 def sanitize_filename(input_string: str, max_length: int = 200) -> str:
     # Define a set of invalid characters
-    invalid_chars = r'\/:*?"<>|\n'
+    invalid_chars = r'\/:*?"<>|'+'\n'
     reserved_names = {
         "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4",
         "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3",
