@@ -44,7 +44,7 @@ brew install ffmpeg
 ```
 
 ### From pyinstaller (Windows)
-The pyinstaller build uses approx. 10 GB of disk space including pretrained models bundled with it. As this is too large for GitHub, the latest release is hosted [here](https://drive.google.com/file/d/12JgwvkFao_h_6hHLi-VqoOrA6Lf11X4f/view?usp=drive_link) and can be run simply by executing `gptsovits.exe`. The client will automatically download the necessary pretrained models for inference on startup.
+The pyinstaller build uses approx. 10 GB of disk space including pretrained models bundled with it. As this is too large for GitHub, the latest release is hosted [here](https://drive.google.com/file/d/1dgG1kg0e9p4khrwpPaI9NdV_PIiMDGOZ/view) and can be run simply by executing `gptsovits.exe`. The client will automatically download the necessary pretrained models for inference on startup.
 
 ### From source (other) (recommend python=3.10)
 1. Clone the repository. 
