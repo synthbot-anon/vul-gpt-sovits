@@ -46,6 +46,8 @@ brew install ffmpeg
 ### From pyinstaller (Windows)
 The pyinstaller build uses approx. 10 GB of disk space including pretrained models bundled with it. As this is too large for GitHub, the latest release is hosted [here](https://drive.google.com/file/d/1dgG1kg0e9p4khrwpPaI9NdV_PIiMDGOZ/view) and can be run simply by executing `gptsovits.exe`. The client will automatically download the necessary pretrained models for inference on startup.
 
+Also see: [CPU-only pytorch version](https://drive.google.com/drive/folders/141YfYH_GS29D80kAcKljmXgN91zKLbUq)
+
 ### From source (other) (recommend python=3.10)
 1. Clone the repository. 
   * Set up a conda environment if you wish: `conda create -n GPTSovitsClient python=3.10`
